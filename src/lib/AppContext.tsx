@@ -1,5 +1,4 @@
 import { getLocales } from 'expo-localization';
-import Storage from 'expo-sqlite/kv-store';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import type { IngredientId } from '../data/ingredients';
@@ -29,6 +28,7 @@ import {
   type JournalEntry,
   type PlanProgress,
 } from './moment';
+import { deviceStore } from './deviceStore';
 import { loadPantry, savePantry } from './pantry';
 import { loadProfile, saveProfile as persistProfile, type FamilyProfile } from './profile';
 import { cancelAllReminders, requestReminderPermission, syncReminders } from './reminders';
@@ -46,14 +46,6 @@ import {
   type PriceBook,
 } from './shopping';
 import { deleteAllData, loadSettings, saveSettings, type KeyValueStore } from './storage';
-
-const deviceStore: KeyValueStore = {
-  getItem: (key) => Storage.getItem(key),
-  setItem: (key, value) => Storage.setItem(key, value),
-  removeItem: async (key) => {
-    await Storage.removeItem(key);
-  },
-};
 
 type AppContextValue = {
   ready: boolean;
