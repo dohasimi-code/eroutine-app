@@ -2,7 +2,8 @@ import { getLocales } from 'expo-localization';
 import Storage from 'expo-sqlite/kv-store';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { pickInitialLanguage, translate, type Language, type TranslationKey } from '../i18n';
+import { pickInitialLanguage, translate, type Language, type TranslationKey, type TranslationParams } from '../i18n';
+import { loadProfile, saveProfile as persistProfile, type FamilyProfile } from './profile';
 import { deleteAllData, loadSettings, saveSettings, type KeyValueStore } from './storage';
 
 const deviceStore: KeyValueStore = {
@@ -17,7 +18,10 @@ type AppContextValue = {
   ready: boolean;
   language: Language;
   setLanguage(language: Language): Promise<void>;
-  t(key: TranslationKey): string;
+  t(key: TranslationKey, params?: TranslationParams): string;
+  // null until the first-run questions are finished (or skipped).
+  profile: FamilyProfile | null;
+  saveProfile(profile: FamilyProfile): Promise<void>;
   resetAllData(): Promise<void>;
 };
 
@@ -30,10 +34,12 @@ function deviceLanguage(): Language {
 export function AppProvider({ children, store = deviceStore }: { children: ReactNode; store?: KeyValueStore }) {
   const [ready, setReady] = useState(false);
   const [language, setLanguageState] = useState<Language>('sq');
+  const [profile, setProfile] = useState<FamilyProfile | null>(null);
 
   useEffect(() => {
-    loadSettings(store).then((settings) => {
+    Promise.all([loadSettings(store), loadProfile(store)]).then(([settings, savedProfile]) => {
       setLanguageState(settings?.language ?? deviceLanguage());
+      setProfile(savedProfile);
       setReady(true);
     });
   }, [store]);
@@ -46,14 +52,31 @@ export function AppProvider({ children, store = deviceStore }: { children: React
     [store],
   );
 
+  const saveProfile = useCallback(
+    async (next: FamilyProfile) => {
+      await persistProfile(store, next);
+      setProfile(next);
+    },
+    [store],
+  );
+
   const resetAllData = useCallback(async () => {
     await deleteAllData(store);
     setLanguageState(deviceLanguage());
+    setProfile(null);
   }, [store]);
 
   const value = useMemo<AppContextValue>(
-    () => ({ ready, language, setLanguage, t: (key) => translate(language, key), resetAllData }),
-    [ready, language, setLanguage, resetAllData],
+    () => ({
+      ready,
+      language,
+      setLanguage,
+      t: (key, params) => translate(language, key, params),
+      profile,
+      saveProfile,
+      resetAllData,
+    }),
+    [ready, language, setLanguage, profile, saveProfile, resetAllData],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LANGUAGES } from '../i18n';
@@ -6,7 +7,7 @@ import { BodyText, Card, Screen } from '../ui/Screen';
 import { colors, fontSize, spacing } from '../ui/theme';
 
 export default function SettingsScreen() {
-  const { t, language, setLanguage, resetAllData } = useApp();
+  const { t, language, setLanguage, profile, resetAllData } = useApp();
 
   function confirmDelete() {
     Alert.alert(t('settings.delete.confirmTitle'), t('settings.delete.confirmBody'), [
@@ -17,6 +18,8 @@ export default function SettingsScreen() {
         onPress: async () => {
           await resetAllData();
           Alert.alert(t('settings.delete.done'));
+          // Without a profile the app starts again from the first-run questions.
+          router.replace('/onboarding');
         },
       },
     ]);
@@ -43,6 +46,21 @@ export default function SettingsScreen() {
           })}
         </View>
       </Card>
+
+      {profile ? (
+        <Pressable onPress={() => router.push('/onboarding?edit=1')} accessibilityRole="button">
+          <Card>
+            <Text style={styles.heading}>{t('settings.profile')}</Text>
+            <BodyText muted>
+              {t('settings.profile.summary', {
+                people: profile.people,
+                minutes: profile.maxCookMinutes,
+                budget: t(`onboarding.budget.${profile.budget}`),
+              })}
+            </BodyText>
+          </Card>
+        </Pressable>
+      ) : null}
 
       <Card>
         <Text style={styles.heading}>{t('settings.privacy.title')}</Text>

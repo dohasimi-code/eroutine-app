@@ -17,6 +17,18 @@ describe('translations', () => {
     expect(translate('sq', 'tabs.today')).toBe('Sot');
     expect(translate('en', 'tabs.today')).toBe('Today');
   });
+
+  it('fills in placeholders', () => {
+    expect(translate('sq', 'onboarding.step', { current: 2, total: 6 })).toBe('Hapi 2 nga 6');
+    expect(translate('en', 'onboarding.cook.minutes', { n: 30 })).toBe('up to 30 min');
+  });
+
+  it('uses the same placeholders in both languages', () => {
+    const names = (text: string) => (text.match(/\{\w+\}/g) ?? []).sort();
+    for (const key of Object.keys(sq) as (keyof typeof sq)[]) {
+      expect(names(en[key])).toEqual(names(sq[key]));
+    }
+  });
 });
 
 describe('initial language', () => {

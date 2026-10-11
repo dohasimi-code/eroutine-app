@@ -11,8 +11,13 @@ export const LANGUAGES: { code: Language; label: string }[] = [
 
 const dictionaries: Record<Language, Record<TranslationKey, string>> = { sq, en };
 
-export function translate(language: Language, key: TranslationKey): string {
-  return dictionaries[language][key];
+export type TranslationParams = Record<string, string | number>;
+
+// Fills placeholders like {n} in a translation.
+export function translate(language: Language, key: TranslationKey, params?: TranslationParams): string {
+  const text = dictionaries[language][key];
+  if (!params) return text;
+  return text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match));
 }
 
 // Albanian is the default; English only when the phone itself is set to English.
