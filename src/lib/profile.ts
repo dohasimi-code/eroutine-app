@@ -6,8 +6,9 @@ export type CookTime = (typeof COOK_TIME_OPTIONS)[number];
 export const BUDGET_OPTIONS = ['saver', 'medium'] as const;
 export type Budget = (typeof BUDGET_OPTIONS)[number];
 
-// Things a family may want left out. Recipes are tagged with the same ids.
-export const EXCLUSION_OPTIONS = ['gluten', 'dairy', 'eggs', 'fish', 'nuts', 'pork', 'meat'] as const;
+// Things a family may want left out. Ingredients carry the same tags, except "meat",
+// which means vegetarian: no chicken, beef, lamb, pork or fish.
+export const EXCLUSION_OPTIONS = ['gluten', 'dairy', 'eggs', 'nuts', 'fish', 'chicken', 'beef', 'lamb', 'pork', 'meat'] as const;
 export type Exclusion = (typeof EXCLUSION_OPTIONS)[number];
 
 export const MIN_PEOPLE = 1;

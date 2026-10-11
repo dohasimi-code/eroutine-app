@@ -84,3 +84,20 @@ Më shkruaj çfarë funksionoi dhe çfarë jo, sipas numrave.
 | 6 | Cilësimet → Profili i familjes | Hapet me përgjigjet e tua; ndryshoji, shtyp "Përfundo" dhe kthehesh te Cilësimet me përmbledhjen e re |
 | 7 | Mbyll dhe hap aplikacionin | Nuk të pyet më; profili mbetet |
 | 8 | Lexo pyetjet | A janë të qarta dhe të ngrohta? A mungon ndonjë përjashtim që familjet shqiptare e kanë shpesh? |
+
+## Lista e kontrollit: pjesa 3 (recetat dhe menuja javore)
+
+| # | Provo këtë | Duhet të ndodhë |
+|---|---|---|
+| 1 | Hap skedën **Menuja** | 7 ditë (nga e hëna), secila me mëngjes, drekë dhe darkë; dita e sotme shënohet "Sot" |
+| 2 | Hap skedën **Sot** | Shfaqen 3 vaktet e sotme |
+| 3 | Prek emrin e një gatimi | Hapet receta: kohët e ndara (përgatitja, gatimi, njomja kur ka), përbërësit për numrin e personave të tu, hapat dhe "Përmban: …" |
+| 4 | Te Menuja, prek ⇄ te një vakt | Dalin deri në 3 gatime të tjera; zgjidh një: ndryshon vetëm ai vakt |
+| 5 | Te ⇄ i një darke | Ka edhe zgjedhjen "Mbetjet e drekës" |
+| 6 | Prek 🔓 te një vakt, pastaj "Krijo javë të re" | Vakti i bllokuar 🔒 mbetet; të tjerat ndryshojnë |
+| 7 | Ndërro "Darka këtë javë": Të lehta / Si dreka / Nga mbetjet / Të përziera | Darkat ndryshojnë sipas zgjedhjes |
+| 8 | Cilësimet → Profili → zgjidh p.sh. "Gluten" dhe "Mish pule" → Përfundo | Menuja e re nuk ka asnjë gatim me gluten ose pulë |
+| 9 | Profili → koha "deri në 30 min" | Nuk del jani me fasule apo byrek me peta shtëpie |
+| 10 | Buxheti "I kursyer" | Nuk dalin tavë kosi, qofte, peshk, fërgesë ose gjellët me viç |
+| 11 | Mbyll dhe hap aplikacionin | Menuja mbetet e njëjta |
+| 12 | Lexo recetat | A janë sasitë, kohët dhe hapat realiste? Shëno çfarë duhet ndrequr |
