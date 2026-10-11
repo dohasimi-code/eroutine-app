@@ -148,3 +148,15 @@ Më shkruaj çfarë funksionoi dhe çfarë jo, sipas numrave.
 | 9 | Ndrysho gjuhën në anglisht | Kujtesat e reja vijnë në anglisht |
 | 10 | Hape rutinën → "Fshije rutinën" | Pyet para se ta fshijë; kujtesa hiqet |
 | 11 | Cilësimet → "Fshi të gjitha të dhënat" | Fshihen rutinat dhe të gjitha kujtesat |
+
+## Lista e kontrollit: pjesa 8 (cilësimet, privatësia, "çfarë kam në shtëpi")
+
+| # | Provo këtë | Duhet të ndodhë |
+|---|---|---|
+| 1 | Skeda **Menuja** → "Çfarë kam në shtëpi" | Hapet lista e përbërësve sipas reparteve (pa kripën dhe erëzat) |
+| 2 | Shëno p.sh. Fasule të thata dhe Thjerrëza, pastaj "Krijo javë të re" | Menuja e re ka jahninë e fasuleve dhe thjerrëzat |
+| 3 | Kthehu te Menuja | Kutia shkruan "2 përbërës të shënuar…" |
+| 4 | Te ⇄ i një vakti | Gatimet me atë që ke në shtëpi dalin të parat |
+| 5 | **Cilësimet** → Kujtesat → "Hap cilësimet e telefonit" | Hapen cilësimet e telefonit për këtë aplikacion |
+| 6 | **Cilësimet** → Privatësia | Lista e qartë e asaj që ruhet në telefon dhe "Nuk kemi llogari…" |
+| 7 | "Fshi të gjitha të dhënat" | Fshihet edhe lista "Çfarë kam në shtëpi" |

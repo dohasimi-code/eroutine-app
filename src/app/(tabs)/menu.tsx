@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -12,14 +13,14 @@ import { colors, fontSize, spacing } from '../../ui/theme';
 type SwapTarget = { dayIndex: number; meal: Meal; options: Recipe[] };
 
 export default function MenuScreen() {
-  const { t, language, week, profile, newWeek, setSlot, toggleLock } = useApp();
+  const { t, language, week, profile, pantry, newWeek, setSlot, toggleLock } = useApp();
   const [swap, setSwap] = useState<SwapTarget | null>(null);
   const today = weekdayIndex(new Date());
 
   if (!week || !profile) return null;
 
   function openSwap(dayIndex: number, meal: Meal) {
-    const options = alternativesFor(week!, dayIndex, meal, profile!, seededRandom(Date.now()));
+    const options = alternativesFor(week!, dayIndex, meal, profile!, seededRandom(Date.now()), 3, new Set(pantry));
     setSwap({ dayIndex, meal, options });
   }
 
@@ -49,6 +50,13 @@ export default function MenuScreen() {
           );
         })}
       </ScrollView>
+
+      <Pressable onPress={() => router.push('/pantry')} accessibilityRole="button">
+        <Card>
+          <Text style={styles.pantryTitle}>{t('pantry.title')}</Text>
+          <Text style={styles.label}>{pantry.length > 0 ? t('pantry.summary', { n: pantry.length }) : t('pantry.empty')}</Text>
+        </Card>
+      </Pressable>
 
       {week.days.map((day, dayIndex) => (
         <Card key={dayIndex}>
@@ -117,6 +125,7 @@ const styles = StyleSheet.create({
   day: { fontSize: fontSize.heading, fontWeight: '600', color: colors.text },
   today: { color: colors.primary },
   footer: { flexDirection: 'row' },
+  pantryTitle: { fontSize: fontSize.body, fontWeight: '600', color: colors.primary },
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' },
   sheet: {
     backgroundColor: colors.background,

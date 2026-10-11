@@ -1,10 +1,18 @@
 import { router } from 'expo-router';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LANGUAGES } from '../i18n';
 import { useApp } from '../lib/AppContext';
 import { BodyText, Card, Screen } from '../ui/Screen';
 import { colors, fontSize, spacing } from '../ui/theme';
+
+const STORED_KEYS = [
+  'settings.privacy.item.profile',
+  'settings.privacy.item.menu',
+  'settings.privacy.item.list',
+  'settings.privacy.item.faith',
+  'settings.privacy.item.routines',
+] as const;
 
 export default function SettingsScreen() {
   const { t, language, setLanguage, profile, resetAllData } = useApp();
@@ -63,8 +71,21 @@ export default function SettingsScreen() {
       ) : null}
 
       <Card>
+        <Text style={styles.heading}>{t('settings.reminders')}</Text>
+        <BodyText muted>{t('settings.reminders.body')}</BodyText>
+        <Pressable onPress={() => Linking.openSettings()} accessibilityRole="button">
+          <Text style={styles.link}>{t('settings.reminders.open')}</Text>
+        </Pressable>
+      </Card>
+
+      <Card>
         <Text style={styles.heading}>{t('settings.privacy.title')}</Text>
         <BodyText>{t('settings.privacy.body')}</BodyText>
+        <BodyText muted>{t('settings.privacy.stored')}</BodyText>
+        {STORED_KEYS.map((key) => (
+          <BodyText key={key}>{`• ${t(key)}`}</BodyText>
+        ))}
+        <BodyText muted>{t('settings.privacy.notCollected')}</BodyText>
         <Pressable onPress={confirmDelete} accessibilityRole="button" style={styles.deleteButton}>
           <Text style={styles.deleteText}>{t('settings.delete')}</Text>
         </Pressable>
@@ -98,4 +119,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   deleteText: { fontSize: fontSize.body, color: colors.accent, fontWeight: '600' },
+  link: { fontSize: fontSize.body, color: colors.primary, fontWeight: '600' },
 });
