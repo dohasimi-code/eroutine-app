@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   plan: 'plan.v1',
   journal: 'journal.v1',
   routines: 'routines.v1',
+  pantry: 'pantry.v1',
 } as const;
 
 export async function loadSettings(store: KeyValueStore): Promise<Settings | null> {

@@ -29,6 +29,7 @@ import {
   type JournalEntry,
   type PlanProgress,
 } from './moment';
+import { loadPantry, savePantry } from './pantry';
 import { loadProfile, saveProfile as persistProfile, type FamilyProfile } from './profile';
 import { cancelAllReminders, requestReminderPermission, syncReminders } from './reminders';
 import { hasReminder, loadRoutines, saveRoutines, upsertRoutine, validateRoutine, type Routine } from './routines';
@@ -78,6 +79,9 @@ type AppContextValue = {
   addJournalEntry(text: string): Promise<boolean>;
   deleteJournalEntry(id: string): Promise<void>;
   routines: Routine[];
+  // Ingredients she has at home; new menus use them first.
+  pantry: IngredientId[];
+  setPantry(pantry: IngredientId[]): Promise<void>;
   // "blocked": saved, but the phone does not allow notifications, so no reminder will show.
   saveRoutine(routine: Routine): Promise<'saved' | 'blocked' | 'invalid'>;
   toggleRoutine(id: string): Promise<'saved' | 'blocked' | 'invalid'>;
@@ -121,6 +125,7 @@ export function AppProvider({ children, store = deviceStore }: { children: React
   const [progress, setProgress] = useState<PlanProgress>(NEW_PROGRESS);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [routines, setRoutines] = useState<Routine[]>([]);
+  const [pantry, setPantryState] = useState<IngredientId[]>([]);
 
   const storeWeek = useCallback(
     async (next: WeekMenu) => {
@@ -157,8 +162,9 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       loadProgress(store),
       loadJournal(store),
       loadRoutines(store),
+      loadPantry(store),
     ]).then(
-      async ([settings, savedProfile, savedWeek, savedPrices, savedListState, savedProgress, savedJournal, savedRoutines]) => {
+      async ([settings, savedProfile, savedWeek, savedPrices, savedListState, savedProgress, savedJournal, savedRoutines, savedPantry]) => {
         setLanguageState(settings?.language ?? deviceLanguage());
         setProfile(savedProfile);
         setPrices(savedPrices);
@@ -166,7 +172,8 @@ export function AppProvider({ children, store = deviceStore }: { children: React
         setProgress(savedProgress);
         setJournal(savedJournal);
         setRoutines(savedRoutines);
-        if (savedProfile && !savedWeek) await storeNewWeek(generateWeek(savedProfile, 'mixed', freshRandom()));
+        setPantryState(savedPantry);
+        if (savedProfile && !savedWeek) await storeNewWeek(generateWeek(savedProfile, 'mixed', freshRandom(), undefined, new Set(savedPantry)));
         else setWeek(savedWeek);
         setReady(true);
       },
@@ -189,17 +196,17 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       setProfile(next);
       // The menu follows the new profile straight away; locked meals stay if they still fit.
       const previous = week ? dropLocksThatNoLongerFit(week, next) : undefined;
-      await storeNewWeek(generateWeek(next, week?.dinnerStyle ?? 'mixed', freshRandom(), previous));
+      await storeNewWeek(generateWeek(next, week?.dinnerStyle ?? 'mixed', freshRandom(), previous, new Set(pantry)));
     },
-    [store, week, storeNewWeek],
+    [store, week, pantry, storeNewWeek],
   );
 
   const newWeek = useCallback(
     async (dinnerStyle?: DinnerStyle) => {
       if (!profile) return;
-      await storeNewWeek(generateWeek(profile, dinnerStyle ?? week?.dinnerStyle ?? 'mixed', freshRandom(), week ?? undefined));
+      await storeNewWeek(generateWeek(profile, dinnerStyle ?? week?.dinnerStyle ?? 'mixed', freshRandom(), week ?? undefined, new Set(pantry)));
     },
-    [profile, week, storeNewWeek],
+    [profile, week, pantry, storeNewWeek],
   );
 
   const setSlot = useCallback(
@@ -300,6 +307,14 @@ export function AppProvider({ children, store = deviceStore }: { children: React
 
   const deleteRoutine = useCallback((id: string) => storeRoutines(routines.filter((r) => r.id !== id)), [routines, storeRoutines]);
 
+  const setPantry = useCallback(
+    async (next: IngredientId[]) => {
+      setPantryState(next);
+      await savePantry(store, next);
+    },
+    [store],
+  );
+
   const resetAllData = useCallback(async () => {
     await cancelAllReminders();
     await deleteAllData(store);
@@ -311,6 +326,7 @@ export function AppProvider({ children, store = deviceStore }: { children: React
     setProgress(NEW_PROGRESS);
     setJournal([]);
     setRoutines([]);
+    setPantryState([]);
   }, [store]);
 
   const value = useMemo<AppContextValue>(
@@ -340,6 +356,8 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       saveRoutine,
       toggleRoutine,
       deleteRoutine,
+      pantry,
+      setPantry,
       resetAllData,
     }),
     [
@@ -367,6 +385,8 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       saveRoutine,
       toggleRoutine,
       deleteRoutine,
+      pantry,
+      setPantry,
       resetAllData,
     ],
   );

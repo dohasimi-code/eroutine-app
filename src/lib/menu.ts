@@ -94,10 +94,26 @@ function shuffle<T>(items: T[], random: () => number): T[] {
   return copy;
 }
 
+// How many of a recipe's required ingredients she already has at home.
+export function pantryScore(recipe: Recipe, pantry: ReadonlySet<string>): number {
+  if (pantry.size === 0) return 0;
+  return recipe.ingredients.filter((item) => !item.optional && pantry.has(item.id)).length;
+}
+
+// Shuffled, then dishes that use what she has at home first (MVP feature 5).
+function pantryFirst(recipes: Recipe[], random: () => number, pantry: ReadonlySet<string>): Recipe[] {
+  const shuffled = shuffle(recipes, random);
+  if (pantry.size === 0) return shuffled;
+  return shuffled
+    .map((recipe, order) => ({ recipe, order, score: pantryScore(recipe, pantry) }))
+    .sort((a, b) => b.score - a.score || a.order - b.order)
+    .map(({ recipe }) => recipe);
+}
+
 // Hands out recipes without repeating until the pool runs out, and avoids serving
 // two variants of the same dish on consecutive days.
-function makePicker(pool: Recipe[], random: () => number, alreadyUsed: Set<string>) {
-  let queue = shuffle(pool.filter((recipe) => !alreadyUsed.has(recipe.id)), random);
+function makePicker(pool: Recipe[], random: () => number, alreadyUsed: Set<string>, pantry: ReadonlySet<string>) {
+  let queue = pantryFirst(pool.filter((recipe) => !alreadyUsed.has(recipe.id)), random, pantry);
   let lastFamily: string | null = null;
   return (): Recipe | null => {
     if (pool.length === 0) return null;
@@ -126,6 +142,7 @@ export function generateWeek(
   dinnerStyle: DinnerStyle,
   random: () => number,
   previous?: WeekMenu,
+  pantry: ReadonlySet<string> = new Set(),
 ): WeekMenu {
   // Locked slots from the previous week stay exactly where they were.
   const locked = (day: number, meal: Meal): Slot | null => {
@@ -140,10 +157,10 @@ export function generateWeek(
     }),
   );
 
-  const nextBreakfast = makePicker(candidatesFor('breakfast', profile), random, lockedIds);
-  const nextLunch = makePicker(candidatesFor('lunch', profile), random, lockedIds);
-  const nextLightDinner = makePicker(candidatesFor('light-dinner', profile), random, lockedIds);
-  const nextFullDinner = makePicker(candidatesFor('lunch', profile), random, lockedIds);
+  const nextBreakfast = makePicker(candidatesFor('breakfast', profile), random, lockedIds, pantry);
+  const nextLunch = makePicker(candidatesFor('lunch', profile), random, lockedIds, pantry);
+  const nextLightDinner = makePicker(candidatesFor('light-dinner', profile), random, lockedIds, pantry);
+  const nextFullDinner = makePicker(candidatesFor('lunch', profile), random, lockedIds, pantry);
 
   const days: DayPlan[] = [];
   for (let day = 0; day < 7; day++) {
@@ -174,6 +191,7 @@ export function alternativesFor(
   profile: FamilyProfile,
   random: () => number,
   count = 3,
+  pantry: ReadonlySet<string> = new Set(),
 ): Recipe[] {
   const current = week.days[dayIndex][meal];
   const currentRecipe = current.kind === 'recipe' ? getRecipe(current.recipeId) : undefined;
@@ -189,8 +207,8 @@ export function alternativesFor(
   );
 
   const pool = candidatesFor(course, profile).filter((recipe) => recipe.id !== currentRecipe?.id);
-  const fresh = shuffle(pool.filter((recipe) => !inWeek.has(recipe.id)), random);
-  const repeats = shuffle(pool.filter((recipe) => inWeek.has(recipe.id)), random);
+  const fresh = pantryFirst(pool.filter((recipe) => !inWeek.has(recipe.id)), random, pantry);
+  const repeats = pantryFirst(pool.filter((recipe) => inWeek.has(recipe.id)), random, pantry);
   return [...fresh, ...repeats].slice(0, count);
 }
 
