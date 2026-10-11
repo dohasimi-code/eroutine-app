@@ -132,3 +132,19 @@ Më shkruaj çfarë funksionoi dhe çfarë jo, sipas numrave.
 | 8 | Profili: fik "momentin me Zotin" | Te Sot nuk dalin më lutja dhe lidhja |
 | 9 | Cilësimet → "Fshi të gjitha të dhënat" | Fshihen edhe ditari dhe ecuria e planit |
 | 10 | Lexo reflektimet dhe lutjet | A janë të sakta dhe të ngrohta? Shëno çfarë duhet ndryshuar. Duhet t'i rishikojë një besimtar (ti, një pastor ose një udhëheqëse) |
+
+## Lista e kontrollit: pjesa 7 (rutinat dhe kujtesat)
+
+| # | Provo këtë | Duhet të ndodhë |
+|---|---|---|
+| 1 | **Momenti im** → "Rutinat e mia" pa asnjë rutinë | Dalin 3 shembuj (p.sh. "+ Lutja e mëngjesit") dhe "+ Shto rutinë" |
+| 2 | Prek një shembull | Hapet rutina me emrin e plotësuar, "Çdo ditë" dhe "Pa kujtesë" të zgjedhura |
+| 3 | Ruaje pa kujtesë | Rutina del në listë: "Çdo ditë · pa kujtesë", me çelësin ndezur. Telefoni nuk kërkon leje |
+| 4 | Hape, zgjidh "Me kujtesë", vendos orën 2 minuta nga tani dhe ruaje | Vetëm tani telefoni kërkon leje për njoftime. Pas pak del njoftimi me emrin e rutinës dhe frazën e butë |
+| 5 | Refuzo lejen e njoftimeve | Rutina ruhet dhe del mesazhi i butë që mund t'i lejosh te cilësimet e telefonit |
+| 6 | "Ditë të caktuara" → zgjidh Hë dhe En | Lista tregon "Hë, En · 07:30" |
+| 7 | "Kur të dua" | Nuk ka kujtesë; shkruan "Për 'Kur të dua' nuk ka kujtesë." |
+| 8 | Fik çelësin e një rutine | Rutina zbehet dhe kujtesa e saj nuk vjen më |
+| 9 | Ndrysho gjuhën në anglisht | Kujtesat e reja vijnë në anglisht |
+| 10 | Hape rutinën → "Fshije rutinën" | Pyet para se ta fshijë; kujtesa hiqet |
+| 11 | Cilësimet → "Fshi të gjitha të dhënat" | Fshihen rutinat dhe të gjitha kujtesat |
