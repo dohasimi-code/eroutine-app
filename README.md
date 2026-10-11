@@ -25,3 +25,9 @@ Expo (React Native) + TypeScript, një kod për Android dhe iPhone.
 
 Prototip në ndërtim (Faza 5). Nuk jep këshilla mjekësore apo ushqimore profesionale.
 Prototype in progress. Not medical or professional nutrition advice.
+
+## Si ta provosh / How to try it
+
+Shih [docs/UDHEZIME.md](docs/UDHEZIME.md) (shqip): instalimi, hapja në telefon me Expo Go dhe lista e kontrollit.
+
+Developers: `npm install`, `npx expo start`, `npm test`, `npm run typecheck`.
