@@ -14,6 +14,7 @@ export type Settings = {
 // Every key the app writes must be listed here so "delete all my data" really deletes everything.
 export const STORAGE_KEYS = {
   settings: 'settings.v1',
+  profile: 'profile.v1',
 } as const;
 
 export async function loadSettings(store: KeyValueStore): Promise<Settings | null> {

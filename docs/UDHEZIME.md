@@ -71,3 +71,16 @@ npx expo start
 | 7 | Lexo tekstet | Tingëllojnë të ngrohta? Ka diçka që do ta ndryshoje? |
 
 Më shkruaj çfarë funksionoi dhe çfarë jo, sipas numrave.
+
+## Lista e kontrollit: pjesa 2 (profili i familjes)
+
+| # | Provo këtë | Duhet të ndodhë |
+|---|---|---|
+| 1 | Hape aplikacionin për herë të parë (ose pas "Fshi të gjitha të dhënat") | Del "Mirë se erdhe" me pyetjen e gjuhës |
+| 2 | Kalo nëpër 6 hapat me "Vazhdo" | Çdo hap tregon "Hapi X nga 6"; në fund hapet skeda Sot |
+| 3 | Fillo nga e para dhe shtyp vetëm "Kalo" | Arrin në fund pa u detyruar të zgjedhësh asgjë |
+| 4 | Te numri i personave shtyp − dhe + | Nuk zbret nën 1 dhe nuk shkon mbi 10+ |
+| 5 | Zgjidh disa ushqime për t'i përjashtuar | Mund të zgjedhësh disa njëherësh dhe t'i heqësh përsëri |
+| 6 | Cilësimet → Profili i familjes | Hapet me përgjigjet e tua; ndryshoji, shtyp "Përfundo" dhe kthehesh te Cilësimet me përmbledhjen e re |
+| 7 | Mbyll dhe hap aplikacionin | Nuk të pyet më; profili mbetet |
+| 8 | Lexo pyetjet | A janë të qarta dhe të ngrohta? A mungon ndonjë përjashtim që familjet shqiptare e kanë shpesh? |

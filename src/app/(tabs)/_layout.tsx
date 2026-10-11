@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Link, Tabs } from 'expo-router';
+import { Link, Redirect, Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { Pressable, type ColorValue } from 'react-native';
 
@@ -24,7 +24,9 @@ function SettingsButton() {
 }
 
 export default function TabLayout() {
-  const { t } = useApp();
+  const { t, ready, profile } = useApp();
+  if (!ready) return null;
+  if (!profile) return <Redirect href="/onboarding" />;
   return (
     <Tabs
       screenOptions={{
