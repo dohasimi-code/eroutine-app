@@ -101,3 +101,19 @@ Më shkruaj çfarë funksionoi dhe çfarë jo, sipas numrave.
 | 10 | Buxheti "I kursyer" | Nuk dalin tavë kosi, qofte, peshk, fërgesë ose gjellët me viç |
 | 11 | Mbyll dhe hap aplikacionin | Menuja mbetet e njëjta |
 | 12 | Lexo recetat | A janë sasitë, kohët dhe hapat realiste? Shëno çfarë duhet ndrequr |
+
+## Lista e kontrollit: pjesa 5 (lista e blerjeve)
+
+| # | Provo këtë | Duhet të ndodhë |
+|---|---|---|
+| 1 | Hap skedën **Lista** | Përbërësit e gjithë javës, të ndarë sipas reparteve (perime, bulmet, mish, furrë, ushqime të thata), me sasitë për numrin e personave të tu |
+| 2 | Shiko kutinë "Kosto e përafërt" | Pa çmime thotë "Shto çmimet që di…". Aplikacioni nuk ka asnjë çmim të gatshëm |
+| 3 | Prek "+ Shto çmim" te vezët dhe shkruaj p.sh. 20 (për copë), dyqani sipas dëshirës | Poshtë emrit del "20 lekë/copë · dyqani · data e sotme"; kosto shfaq "rreth … lekë" dhe "për 1 nga N artikuj" |
+| 4 | Shkruaj diçka që s'është numër | Del "Shkruaj një numër, p.sh. 180." dhe nuk ruhet |
+| 5 | Prek ☐ te një artikull | Shënohet ✓ dhe vizatohet me vijë (e bleve) |
+| 6 | Prek 🏠 te një artikull | Kalon te "I ke në shtëpi" dhe nuk llogaritet më në kosto; "Kthe në listë" e kthen |
+| 7 | Shiko "Kontrollo nëse i ke" | Kripa dhe erëzat që duhen me lugë, pa çmim |
+| 8 | Te Menuja ndërro një vakt | Lista ndryshon menjëherë; shenjat ✓ dhe 🏠 mbeten |
+| 9 | "Krijo javë të re" | Lista e re fillon pa shenja ✓ dhe 🏠, por çmimet mbeten |
+| 10 | Mbyll dhe hap aplikacionin | Shenjat dhe çmimet mbeten |
+| 11 | Cilësimet → "Fshi të gjitha të dhënat" | Fshihen edhe çmimet dhe lista |
