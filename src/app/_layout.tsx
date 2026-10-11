@@ -17,6 +17,7 @@ function RootStack() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ title: t('settings.title') }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      <Stack.Screen name="recipe/[id]" options={{ title: '', headerBackTitle: t('tabs.menu') }} />
     </Stack>
   );
 }
