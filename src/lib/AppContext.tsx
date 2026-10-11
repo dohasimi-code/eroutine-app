@@ -30,6 +30,8 @@ import {
   type PlanProgress,
 } from './moment';
 import { loadProfile, saveProfile as persistProfile, type FamilyProfile } from './profile';
+import { cancelAllReminders, requestReminderPermission, syncReminders } from './reminders';
+import { hasReminder, loadRoutines, saveRoutines, upsertRoutine, validateRoutine, type Routine } from './routines';
 import {
   EMPTY_LIST_STATE,
   loadListState,
@@ -75,6 +77,11 @@ type AppContextValue = {
   journal: JournalEntry[];
   addJournalEntry(text: string): Promise<boolean>;
   deleteJournalEntry(id: string): Promise<void>;
+  routines: Routine[];
+  // "blocked": saved, but the phone does not allow notifications, so no reminder will show.
+  saveRoutine(routine: Routine): Promise<'saved' | 'blocked' | 'invalid'>;
+  toggleRoutine(id: string): Promise<'saved' | 'blocked' | 'invalid'>;
+  deleteRoutine(id: string): Promise<void>;
   resetAllData(): Promise<void>;
 };
 
@@ -113,6 +120,7 @@ export function AppProvider({ children, store = deviceStore }: { children: React
   const [listState, setListState] = useState<ListState>(EMPTY_LIST_STATE);
   const [progress, setProgress] = useState<PlanProgress>(NEW_PROGRESS);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
+  const [routines, setRoutines] = useState<Routine[]>([]);
 
   const storeWeek = useCallback(
     async (next: WeekMenu) => {
@@ -148,14 +156,16 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       loadListState(store),
       loadProgress(store),
       loadJournal(store),
+      loadRoutines(store),
     ]).then(
-      async ([settings, savedProfile, savedWeek, savedPrices, savedListState, savedProgress, savedJournal]) => {
+      async ([settings, savedProfile, savedWeek, savedPrices, savedListState, savedProgress, savedJournal, savedRoutines]) => {
         setLanguageState(settings?.language ?? deviceLanguage());
         setProfile(savedProfile);
         setPrices(savedPrices);
         setListState(savedListState);
         setProgress(savedProgress);
         setJournal(savedJournal);
+        setRoutines(savedRoutines);
         if (savedProfile && !savedWeek) await storeNewWeek(generateWeek(savedProfile, 'mixed', freshRandom()));
         else setWeek(savedWeek);
         setReady(true);
@@ -167,8 +177,10 @@ export function AppProvider({ children, store = deviceStore }: { children: React
     async (next: Language) => {
       setLanguageState(next);
       await saveSettings(store, { language: next });
+      // Reminder texts follow the app language.
+      await syncReminders(routines, next, translate(next, 'routine.channel'));
     },
-    [store],
+    [store, routines],
   );
 
   const saveProfile = useCallback(
@@ -258,7 +270,38 @@ export function AppProvider({ children, store = deviceStore }: { children: React
     [store, journal],
   );
 
+  const storeRoutines = useCallback(
+    async (next: Routine[]) => {
+      setRoutines(next);
+      await saveRoutines(store, next);
+      await syncReminders(next, language, translate(language, 'routine.channel'));
+    },
+    [store, language],
+  );
+
+  const saveRoutine = useCallback(
+    async (routine: Routine) => {
+      const valid = validateRoutine(routine);
+      if (!valid) return 'invalid' as const;
+      const allowed = hasReminder(valid) ? await requestReminderPermission(translate(language, 'routine.channel')) : true;
+      await storeRoutines(upsertRoutine(routines, valid));
+      return allowed ? ('saved' as const) : ('blocked' as const);
+    },
+    [routines, language, storeRoutines],
+  );
+
+  const toggleRoutine = useCallback(
+    async (id: string) => {
+      const routine = routines.find((r) => r.id === id);
+      return routine ? saveRoutine({ ...routine, active: !routine.active }) : ('invalid' as const);
+    },
+    [routines, saveRoutine],
+  );
+
+  const deleteRoutine = useCallback((id: string) => storeRoutines(routines.filter((r) => r.id !== id)), [routines, storeRoutines]);
+
   const resetAllData = useCallback(async () => {
+    await cancelAllReminders();
     await deleteAllData(store);
     setLanguageState(deviceLanguage());
     setProfile(null);
@@ -267,6 +310,7 @@ export function AppProvider({ children, store = deviceStore }: { children: React
     setListState(EMPTY_LIST_STATE);
     setProgress(NEW_PROGRESS);
     setJournal([]);
+    setRoutines([]);
   }, [store]);
 
   const value = useMemo<AppContextValue>(
@@ -292,6 +336,10 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       journal,
       addJournalEntry,
       deleteJournalEntry,
+      routines,
+      saveRoutine,
+      toggleRoutine,
+      deleteRoutine,
       resetAllData,
     }),
     [
@@ -315,6 +363,10 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       journal,
       addJournalEntry,
       deleteJournalEntry,
+      routines,
+      saveRoutine,
+      toggleRoutine,
+      deleteRoutine,
       resetAllData,
     ],
   );

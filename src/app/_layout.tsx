@@ -20,6 +20,7 @@ function RootStack() {
       <Stack.Screen name="recipe/[id]" options={{ title: '', headerBackTitle: t('tabs.menu') }} />
       <Stack.Screen name="reading/[day]" options={{ title: '', headerBackTitle: t('tabs.moment') }} />
       <Stack.Screen name="journal" options={{ title: '', headerBackTitle: t('tabs.moment') }} />
+      <Stack.Screen name="routine/[id]" options={{ title: '', headerBackTitle: t('tabs.moment') }} />
     </Stack>
   );
 }
