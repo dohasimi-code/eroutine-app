@@ -384,7 +384,7 @@ export const RECIPES: Recipe[] = [
       i('lamb', 700, 'g'),
       i('yogurt', 800, 'g'),
       i('eggs', 3, 'pcs'),
-      i('flour', 3, 'tbsp'),
+      i('flour', 25, 'g'),
       i('butter', 60, 'g'),
       i('rice', 60, 'g', true),
       i('salt', 1, 'tsp'),
@@ -890,7 +890,7 @@ export const RECIPES: Recipe[] = [
     cookMinutes: 25,
     servings: 4,
     ingredients: [
-      i('potato', 2, 'pcs'),
+      i('potato', 300, 'g'),
       i('carrot', 2, 'pcs'),
       i('onion', 1, 'pcs'),
       i('zucchini', 1, 'pcs'),
@@ -1001,7 +1001,7 @@ export const RECIPES: Recipe[] = [
     prepMinutes: 10,
     cookMinutes: 15,
     servings: 4,
-    ingredients: [i('zucchini', 4, 'pcs'), i('oil', 4, 'tbsp'), i('yogurt', 400, 'g'), i('garlic', 2, 'pcs'), i('salt', 1, 'tsp'), i('flour', 3, 'tbsp', true)],
+    ingredients: [i('zucchini', 4, 'pcs'), i('oil', 4, 'tbsp'), i('yogurt', 400, 'g'), i('garlic', 2, 'pcs'), i('salt', 1, 'tsp'), i('flour', 25, 'g', true)],
     steps: {
       sq: [
         'Prit kungujt në feta dhe kriposi.',

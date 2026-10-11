@@ -16,6 +16,8 @@ export const STORAGE_KEYS = {
   settings: 'settings.v1',
   profile: 'profile.v1',
   menu: 'menu.v1',
+  prices: 'prices.v1',
+  list: 'list.v1',
 } as const;
 
 export async function loadSettings(store: KeyValueStore): Promise<Settings | null> {
