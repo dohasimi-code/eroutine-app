@@ -18,6 +18,8 @@ export const STORAGE_KEYS = {
   menu: 'menu.v1',
   prices: 'prices.v1',
   list: 'list.v1',
+  plan: 'plan.v1',
+  journal: 'journal.v1',
 } as const;
 
 export async function loadSettings(store: KeyValueStore): Promise<Settings | null> {

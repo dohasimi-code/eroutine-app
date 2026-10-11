@@ -117,3 +117,18 @@ Më shkruaj çfarë funksionoi dhe çfarë jo, sipas numrave.
 | 9 | "Krijo javë të re" | Lista e re fillon pa shenja ✓ dhe 🏠, por çmimet mbeten |
 | 10 | Mbyll dhe hap aplikacionin | Shenjat dhe çmimet mbeten |
 | 11 | Cilësimet → "Fshi të gjitha të dhënat" | Fshihen edhe çmimet dhe lista |
+
+## Lista e kontrollit: pjesa 6 (Momenti im)
+
+| # | Provo këtë | Duhet të ndodhë |
+|---|---|---|
+| 1 | Hap skedën **Momenti im** | "Mjafton për sot · Dita 1 nga 30": tema, referenca (p.sh. Psalmi 23:1-6), mendimi për sot dhe lutja |
+| 2 | Në shqip | Nuk ka tekst biblik; shkruan "Lexoje në Biblën tënde." |
+| 3 | Kalo gjuhën në anglisht (Cilësimet) dhe shtyp **Read** | Hapet teksti KJV i pasazhit me numrat e vargjeve. Në një telefon me rajon Mbretëria e Bashkuar butoni nuk del |
+| 4 | Shtyp "E bëra për sot" | Del "Mjafton për sot…"; "Lexo edhe ditën tjetër" të tregon ditën 2 nëse do |
+| 5 | Mos e hap disa ditë, pastaj ktheu | Del "Je kthyer. Kjo mjafton." dhe vazhdon aty ku e le, pa ditë "të humbura" |
+| 6 | "Shkruaj një lutje ose mendim" | Hapet ditari: shkruaj, ruaje, shënimi del me datë; "Fshije" pyet para se ta fshijë |
+| 7 | Skeda **Sot** | Ka "Lutje para ngrënies" (ndryshon sipas ditës së javës) dhe lidhjen "Momenti im sot: …" |
+| 8 | Profili: fik "momentin me Zotin" | Te Sot nuk dalin më lutja dhe lidhja |
+| 9 | Cilësimet → "Fshi të gjitha të dhënat" | Fshihen edhe ditari dhe ecuria e planit |
+| 10 | Lexo reflektimet dhe lutjet | A janë të sakta dhe të ngrohta? Shëno çfarë duhet ndryshuar. Duhet t'i rishikojë një besimtar (ti, një pastor ose një udhëheqëse) |
