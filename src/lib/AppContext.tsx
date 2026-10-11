@@ -18,6 +18,17 @@ import {
   type Slot,
   type WeekMenu,
 } from './menu';
+import {
+  NEW_PROGRESS,
+  completeDay,
+  loadJournal,
+  loadProgress,
+  newEntry,
+  saveJournal,
+  saveProgress,
+  type JournalEntry,
+  type PlanProgress,
+} from './moment';
 import { loadProfile, saveProfile as persistProfile, type FamilyProfile } from './profile';
 import {
   EMPTY_LIST_STATE,
@@ -25,6 +36,7 @@ import {
   loadPrices,
   saveListState,
   savePrices,
+  todayIso,
   toggleIn,
   type ListState,
   type Price,
@@ -57,6 +69,12 @@ type AppContextValue = {
   listState: ListState;
   toggleAtHome(key: string): Promise<void>;
   toggleBought(key: string): Promise<void>;
+  progress: PlanProgress;
+  completeToday(): Promise<void>;
+  restartPlan(): Promise<void>;
+  journal: JournalEntry[];
+  addJournalEntry(text: string): Promise<boolean>;
+  deleteJournalEntry(id: string): Promise<void>;
   resetAllData(): Promise<void>;
 };
 
@@ -93,6 +111,8 @@ export function AppProvider({ children, store = deviceStore }: { children: React
   const [week, setWeek] = useState<WeekMenu | null>(null);
   const [prices, setPrices] = useState<PriceBook>({});
   const [listState, setListState] = useState<ListState>(EMPTY_LIST_STATE);
+  const [progress, setProgress] = useState<PlanProgress>(NEW_PROGRESS);
+  const [journal, setJournal] = useState<JournalEntry[]>([]);
 
   const storeWeek = useCallback(
     async (next: WeekMenu) => {
@@ -120,12 +140,22 @@ export function AppProvider({ children, store = deviceStore }: { children: React
   );
 
   useEffect(() => {
-    Promise.all([loadSettings(store), loadProfile(store), loadWeek(store), loadPrices(store), loadListState(store)]).then(
-      async ([settings, savedProfile, savedWeek, savedPrices, savedListState]) => {
+    Promise.all([
+      loadSettings(store),
+      loadProfile(store),
+      loadWeek(store),
+      loadPrices(store),
+      loadListState(store),
+      loadProgress(store),
+      loadJournal(store),
+    ]).then(
+      async ([settings, savedProfile, savedWeek, savedPrices, savedListState, savedProgress, savedJournal]) => {
         setLanguageState(settings?.language ?? deviceLanguage());
         setProfile(savedProfile);
         setPrices(savedPrices);
         setListState(savedListState);
+        setProgress(savedProgress);
+        setJournal(savedJournal);
         if (savedProfile && !savedWeek) await storeNewWeek(generateWeek(savedProfile, 'mixed', freshRandom()));
         else setWeek(savedWeek);
         setReady(true);
@@ -195,6 +225,39 @@ export function AppProvider({ children, store = deviceStore }: { children: React
     [listState, storeListState],
   );
 
+  const storeProgress = useCallback(
+    async (next: PlanProgress) => {
+      setProgress(next);
+      await saveProgress(store, next);
+    },
+    [store],
+  );
+
+  const completeToday = useCallback(() => storeProgress(completeDay(progress, todayIso())), [progress, storeProgress]);
+
+  const restartPlan = useCallback(() => storeProgress(NEW_PROGRESS), [storeProgress]);
+
+  const addJournalEntry = useCallback(
+    async (text: string) => {
+      const entry = newEntry(text, new Date());
+      if (!entry) return false;
+      const next = [entry, ...journal];
+      setJournal(next);
+      await saveJournal(store, next);
+      return true;
+    },
+    [store, journal],
+  );
+
+  const deleteJournalEntry = useCallback(
+    async (id: string) => {
+      const next = journal.filter((entry) => entry.id !== id);
+      setJournal(next);
+      await saveJournal(store, next);
+    },
+    [store, journal],
+  );
+
   const resetAllData = useCallback(async () => {
     await deleteAllData(store);
     setLanguageState(deviceLanguage());
@@ -202,6 +265,8 @@ export function AppProvider({ children, store = deviceStore }: { children: React
     setWeek(null);
     setPrices({});
     setListState(EMPTY_LIST_STATE);
+    setProgress(NEW_PROGRESS);
+    setJournal([]);
   }, [store]);
 
   const value = useMemo<AppContextValue>(
@@ -221,6 +286,12 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       listState,
       toggleAtHome,
       toggleBought,
+      progress,
+      completeToday,
+      restartPlan,
+      journal,
+      addJournalEntry,
+      deleteJournalEntry,
       resetAllData,
     }),
     [
@@ -238,6 +309,12 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       listState,
       toggleAtHome,
       toggleBought,
+      progress,
+      completeToday,
+      restartPlan,
+      journal,
+      addJournalEntry,
+      deleteJournalEntry,
       resetAllData,
     ],
   );
