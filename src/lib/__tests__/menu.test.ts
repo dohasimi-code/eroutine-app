@@ -3,13 +3,17 @@ import { RECIPES } from '../../data/recipes';
 import {
   DINNER_STYLES,
   MEALS,
+  MIN_CHOICES,
   alternativesFor,
   candidatesFor,
+  cooksForTomorrow,
   fitsProfile,
   generateWeek,
   getRecipe,
   loadWeek,
   recipeTags,
+  relinkLeftovers,
+  replaceSlot,
   saveWeek,
   seededRandom,
   toggleLock,
@@ -95,12 +99,19 @@ describe('filters', () => {
     expect(lunches.map((r) => r.id)).not.toContain('tave-kosi');
   });
 
-  it('respects cooking time, and relaxes it only when nothing fits', () => {
+  it('respects cooking time, and adds the next quickest dishes only when too few fit', () => {
     const quick = profile({ maxCookMinutes: 30 });
-    expect(candidatesFor('lunch', quick).every((recipe) => totalMinutes(recipe) <= 30)).toBe(true);
-    // No lunch takes 15 minutes or less, so slower lunches are offered instead of nothing.
-    expect(candidatesFor('lunch', profile({ maxCookMinutes: 15 })).length).toBeGreaterThan(0);
+    expect(candidatesFor('light-dinner', quick).every((recipe) => totalMinutes(recipe) <= 30)).toBe(true);
     expect(fitsProfile(getRecipe('bean-stew')!, quick)).toBe(false);
+    // Few thrifty lunches take 30 minutes or less: the quickest of the rest fill the week
+    // instead of one dish coming back every day (Donald's phone test, 13 Oct 2026).
+    const tight = profile({ maxCookMinutes: 30, budget: 'saver' });
+    const lunches = candidatesFor('lunch', tight);
+    expect(lunches.length).toBe(MIN_CHOICES);
+    const within = lunches.filter((recipe) => totalMinutes(recipe) <= 30);
+    expect(lunches.slice(0, within.length)).toEqual(within);
+    const week = generateWeek(tight, 'light', seededRandom(1));
+    expect(new Set(week.days.map((d) => (d.lunch.kind === 'recipe' ? d.lunch.recipeId : ''))).size).toBe(7);
   });
 
   it('snacks such as sutliash are never in the weekly menu', () => {
@@ -123,12 +134,26 @@ describe('weekly menu', () => {
     expect(new Set(lunches).size).toBe(7);
   });
 
-  it('does not serve two variants of the same dish on consecutive days', () => {
+  it('does not serve the same kind of dish two days running, or at lunch and dinner on one day', () => {
     for (let seed = 1; seed <= 20; seed++) {
-      const week = generateWeek(profile(), 'light', seededRandom(seed));
-      const families = week.days.map((day) => (day.lunch.kind === 'recipe' ? getRecipe(day.lunch.recipeId)!.family : ''));
-      for (let i = 1; i < families.length; i++) expect(families[i]).not.toBe(families[i - 1]);
+      for (const style of DINNER_STYLES) {
+        const week = generateWeek(profile(), style, seededRandom(seed));
+        const lunchBases = week.days.map((day) => (day.lunch.kind === 'recipe' ? getRecipe(day.lunch.recipeId)!.base : ''));
+        for (let i = 1; i < lunchBases.length; i++) expect(lunchBases[i]).not.toBe(lunchBases[i - 1]);
+        for (const day of week.days) {
+          if (day.lunch.kind !== 'recipe' || day.dinner.kind === 'empty') continue;
+          expect(getRecipe(day.dinner.recipeId)!.base).not.toBe(getRecipe(day.lunch.recipeId)!.base);
+        }
+      }
     }
+  });
+
+  it('puts last week\'s dishes at the back of the queue', () => {
+    const first = generateWeek(profile(), 'light', seededRandom(11));
+    const second = generateWeek(profile(), 'light', seededRandom(12), first);
+    const lunches = (week: WeekMenu) => week.days.map((day) => (day.lunch.kind === 'recipe' ? day.lunch.recipeId : ''));
+    const repeated = lunches(second).filter((id) => lunches(first).includes(id));
+    expect(repeated).toEqual([]);
   });
 
   it('follows each dinner style', () => {
@@ -141,8 +166,20 @@ describe('weekly menu', () => {
       expect(day.dinner.kind === 'recipe' && day.lunch.kind === 'recipe' && day.dinner.recipeId === day.lunch.recipeId).toBe(false);
     }
 
-    const leftovers = generateWeek(profile(), 'leftovers', seededRandom(3));
-    expect(leftovers.days.every((d) => d.dinner.kind === 'leftovers')).toBe(true);
+    // Leftovers reheat the previous day's lunch, never the same day's. Monday has no
+    // previous lunch, and fish or pasta do not keep, so those evenings get a light dinner.
+    for (let seed = 1; seed <= 20; seed++) {
+      const leftovers = generateWeek(profile(), 'leftovers', seededRandom(seed));
+      expect(leftovers.days[0].dinner.kind).toBe('recipe');
+      leftovers.days.forEach((day, index) => {
+        if (index === 0) return;
+        const yesterday = leftovers.days[index - 1].lunch;
+        const keeps = yesterday.kind === 'recipe' && !getRecipe(yesterday.recipeId)!.noLeftovers;
+        if (keeps) expect(day.dinner).toEqual({ kind: 'leftovers', recipeId: yesterday.recipeId, locked: false });
+        else expect(day.dinner.kind).toBe('recipe');
+        expect(cooksForTomorrow(leftovers, index - 1)).toBe(keeps);
+      });
+    }
 
     const mixed = generateWeek(profile(), 'mixed', seededRandom(3));
     const kinds = mixed.days.map((d) => d.dinner.kind);
@@ -200,6 +237,20 @@ describe('swapping one meal', () => {
   });
 });
 
+describe('changing a lunch', () => {
+  it('moves the next evening\'s leftovers with it, or plans a light dinner instead', () => {
+    const week = generateWeek(profile(), 'leftovers', seededRandom(13));
+    const day = week.days.findIndex((d, i) => i > 0 && d.dinner.kind === 'leftovers');
+    const pasta = replaceSlot(week, day - 1, 'lunch', { kind: 'recipe', recipeId: 'pasta-tomato', locked: false });
+    const relinked = relinkLeftovers(pasta, profile(), seededRandom(14));
+    expect(relinked.days[day].dinner.kind).toBe('recipe');
+    expect(getRecipe((relinked.days[day].dinner as { recipeId: string }).recipeId)!.course).toBe('light-dinner');
+
+    const beans = replaceSlot(week, day - 1, 'lunch', { kind: 'recipe', recipeId: 'bean-stew', locked: false });
+    expect(relinkLeftovers(beans, profile(), seededRandom(14)).days[day].dinner).toEqual({ kind: 'leftovers', recipeId: 'bean-stew', locked: false });
+  });
+});
+
 describe('saving the week', () => {
   it('round-trips and rejects broken data', async () => {
     const store = createMemoryStore();
@@ -211,6 +262,10 @@ describe('saving the week', () => {
     expect(await loadWeek(store)).toBeNull();
     const removed = { ...week, days: week.days.map((d) => ({ ...d, lunch: { kind: 'recipe', recipeId: 'gone', locked: false } })) };
     await store.setItem(STORAGE_KEYS.menu, JSON.stringify(removed));
+    expect(await loadWeek(store)).toBeNull();
+    // Weeks saved before leftovers named their dish are replaced by a new week.
+    const oldLeftovers = { ...week, days: week.days.map((d) => ({ ...d, dinner: { kind: 'leftovers', locked: false } })) };
+    await store.setItem(STORAGE_KEYS.menu, JSON.stringify(oldLeftovers));
     expect(await loadWeek(store)).toBeNull();
   });
 });

@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { MEAL_PRAYERS, PLAN } from '../../data/plan';
 import { greetingKey } from '../../i18n';
 import { useApp } from '../../lib/AppContext';
-import { MEALS, weekdayIndex } from '../../lib/menu';
+import { MEALS, cooksForTomorrow, weekdayIndex } from '../../lib/menu';
 import { currentDayIndex, isPlanFinished } from '../../lib/moment';
 import { MealRow } from '../../ui/MealRow';
 import { Card, Screen } from '../../ui/Screen';
@@ -19,7 +19,7 @@ export default function TodayScreen() {
       {day ? (
         <Card>
           {MEALS.map((meal) => (
-            <MealRow key={meal} meal={meal} slot={day[meal]} />
+            <MealRow key={meal} meal={meal} slot={day[meal]} cookExtra={meal === 'lunch' && cooksForTomorrow(week!, weekday)} />
           ))}
         </Card>
       ) : null}

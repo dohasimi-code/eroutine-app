@@ -1,5 +1,4 @@
 import { getLocales } from 'expo-localization';
-import Storage from 'expo-sqlite/kv-store';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import type { IngredientId } from '../data/ingredients';
@@ -9,6 +8,7 @@ import {
   generateWeek,
   getRecipe,
   loadWeek,
+  relinkLeftovers,
   replaceSlot,
   saveWeek,
   seededRandom,
@@ -29,6 +29,7 @@ import {
   type JournalEntry,
   type PlanProgress,
 } from './moment';
+import { deviceStore } from './deviceStore';
 import { loadPantry, savePantry } from './pantry';
 import { loadProfile, saveProfile as persistProfile, type FamilyProfile } from './profile';
 import { cancelAllReminders, requestReminderPermission, syncReminders } from './reminders';
@@ -46,14 +47,6 @@ import {
   type PriceBook,
 } from './shopping';
 import { deleteAllData, loadSettings, saveSettings, type KeyValueStore } from './storage';
-
-const deviceStore: KeyValueStore = {
-  getItem: (key) => Storage.getItem(key),
-  setItem: (key, value) => Storage.setItem(key, value),
-  removeItem: async (key) => {
-    await Storage.removeItem(key);
-  },
-};
 
 type AppContextValue = {
   ready: boolean;
@@ -211,9 +204,10 @@ export function AppProvider({ children, store = deviceStore }: { children: React
 
   const setSlot = useCallback(
     async (dayIndex: number, meal: Meal, slot: Slot) => {
-      if (week) await storeWeek(replaceSlot(week, dayIndex, meal, slot));
+      // Changing a lunch can change what tomorrow's leftovers dinner reheats.
+      if (week && profile) await storeWeek(relinkLeftovers(replaceSlot(week, dayIndex, meal, slot), profile, freshRandom()));
     },
-    [week, storeWeek],
+    [week, profile, storeWeek],
   );
 
   const toggleLock = useCallback(

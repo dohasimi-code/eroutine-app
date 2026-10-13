@@ -24,7 +24,8 @@ export function buildShoppingList(week: WeekMenu, people: number): ListItem[] {
   for (const day of week.days) {
     for (const meal of MEALS) {
       const slot = day[meal];
-      if (slot.kind !== 'recipe') continue;
+      // A leftovers dinner means cooking a double amount of the previous day's lunch.
+      if (slot.kind === 'empty') continue;
       const recipe = getRecipe(slot.recipeId);
       if (!recipe) continue;
       for (const item of recipe.ingredients) {

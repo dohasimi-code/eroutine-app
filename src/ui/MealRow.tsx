@@ -9,23 +9,26 @@ import { colors, fontSize, spacing } from './theme';
 type Props = {
   meal: Meal;
   slot: Slot;
+  // This lunch is also tomorrow's dinner.
+  cookExtra?: boolean;
   onSwap?(): void;
   onToggleLock?(): void;
 };
 
-export function MealRow({ meal, slot, onSwap, onToggleLock }: Props) {
+export function MealRow({ meal, slot, cookExtra, onSwap, onToggleLock }: Props) {
   const { t, language } = useApp();
-  const recipe = slot.kind === 'recipe' ? getRecipe(slot.recipeId) : undefined;
+  const recipe = slot.kind === 'empty' ? undefined : getRecipe(slot.recipeId);
 
   let title: string;
   let detail: string | null = null;
-  if (recipe) {
+  if (recipe && slot.kind === 'leftovers') {
+    title = recipe.name[language];
+    detail = `${t('meal.leftovers')} · ${t('meal.leftovers.hint')}`;
+  } else if (recipe) {
     title = recipe.name[language];
     detail = t('meal.minutes', { n: totalMinutes(recipe) });
     if (recipe.soakHours) detail += ` ${t('meal.soak', { n: recipe.soakHours })}`;
-  } else if (slot.kind === 'leftovers') {
-    title = t('meal.leftovers');
-    detail = t('meal.leftovers.hint');
+    if (cookExtra) detail += ` · ${t('meal.cookExtra')}`;
   } else {
     title = t('meal.empty');
   }
