@@ -3,14 +3,25 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useApp } from '../../lib/AppContext';
-import { DINNER_STYLES, MEALS, alternativesFor, seededRandom, totalMinutes, weekdayIndex, type Meal } from '../../lib/menu';
+import {
+  DINNER_STYLES,
+  MEALS,
+  alternativesFor,
+  cooksForTomorrow,
+  getRecipe,
+  leftoverSource,
+  seededRandom,
+  totalMinutes,
+  weekdayIndex,
+  type Meal,
+} from '../../lib/menu';
 import type { Recipe } from '../../data/types';
 import { Button, Choice } from '../../ui/Choice';
 import { MealRow } from '../../ui/MealRow';
 import { BodyText, Card } from '../../ui/Screen';
 import { colors, fontSize, spacing } from '../../ui/theme';
 
-type SwapTarget = { dayIndex: number; meal: Meal; options: Recipe[] };
+type SwapTarget = { dayIndex: number; meal: Meal; options: Recipe[]; leftover: Recipe | null };
 
 export default function MenuScreen() {
   const { t, language, week, profile, pantry, newWeek, setSlot, toggleLock } = useApp();
@@ -21,13 +32,17 @@ export default function MenuScreen() {
 
   function openSwap(dayIndex: number, meal: Meal) {
     const options = alternativesFor(week!, dayIndex, meal, profile!, seededRandom(Date.now()), 3, new Set(pantry));
-    setSwap({ dayIndex, meal, options });
+    // Leftovers can only come from the previous day's lunch.
+    const source = meal === 'dinner' ? leftoverSource(week!.days[dayIndex - 1]?.lunch) : null;
+    const current = week!.days[dayIndex].dinner;
+    const alreadyLeftovers = meal === 'dinner' && current.kind === 'leftovers';
+    setSwap({ dayIndex, meal, options, leftover: source && !alreadyLeftovers ? (getRecipe(source) ?? null) : null });
   }
 
-  async function choose(recipeId: string | null) {
+  async function choose(recipeId: string, kind: 'recipe' | 'leftovers' = 'recipe') {
     if (!swap) return;
     // Choosing keeps the old lock state off: a swapped meal is a fresh choice.
-    await setSlot(swap.dayIndex, swap.meal, recipeId ? { kind: 'recipe', recipeId, locked: false } : { kind: 'leftovers', locked: false });
+    await setSlot(swap.dayIndex, swap.meal, { kind, recipeId, locked: false });
     setSwap(null);
   }
 
@@ -69,6 +84,7 @@ export default function MenuScreen() {
               key={meal}
               meal={meal}
               slot={day[meal]}
+              cookExtra={meal === 'lunch' && cooksForTomorrow(week, dayIndex)}
               onSwap={() => openSwap(dayIndex, meal)}
               onToggleLock={() => toggleLock(dayIndex, meal)}
             />
@@ -95,8 +111,13 @@ export default function MenuScreen() {
                 onPress={() => choose(recipe.id)}
               />
             ))}
-            {swap?.meal === 'dinner' ? (
-              <Choice label={t('meal.leftovers')} hint={t('meal.leftovers.hint')} selected={false} onPress={() => choose(null)} />
+            {swap?.leftover ? (
+              <Choice
+                label={`${t('meal.leftovers')}: ${swap.leftover.name[language]}`}
+                hint={t('meal.leftovers.hint')}
+                selected={false}
+                onPress={() => choose(swap.leftover!.id, 'leftovers')}
+              />
             ) : null}
             <Button variant="quiet" label={t('menu.swap.cancel')} onPress={() => setSwap(null)} />
           </View>

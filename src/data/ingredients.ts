@@ -18,6 +18,8 @@ export const INGREDIENTS = {
   parsley: { name: { sq: 'Majdanoz', en: 'Parsley' }, category: 'produce', tags: [] },
   dill: { name: { sq: 'Kopër', en: 'Dill' }, category: 'produce', tags: [] },
   peas: { name: { sq: 'Bizele (të freskëta ose të ngrira)', en: 'Peas (fresh or frozen)' }, category: 'produce', tags: [] },
+  cabbage: { name: { sq: 'Lakër', en: 'Cabbage' }, category: 'produce', tags: [] },
+  greenBeans: { name: { sq: 'Fasule të njoma', en: 'Green beans' }, category: 'produce', tags: [] },
   seasonalFruit: { name: { sq: 'Fruta të sezonit', en: 'Seasonal fruit' }, category: 'produce', tags: [] },
 
   // Dairy and eggs
@@ -43,6 +45,8 @@ export const INGREDIENTS = {
   // Pantry
   flour: { name: { sq: 'Miell gruri', en: 'Wheat flour' }, category: 'pantry', tags: ['gluten'] },
   yeast: { name: { sq: 'Maja buke', en: 'Dry yeast' }, category: 'pantry', tags: [] },
+  // Plain maize flour; check the label if gluten matters, as some mills also grind wheat.
+  cornmeal: { name: { sq: 'Miell misri', en: 'Cornmeal' }, category: 'pantry', tags: [], checkLabel: true },
   rice: { name: { sq: 'Oriz', en: 'Rice' }, category: 'pantry', tags: [] },
   pasta: { name: { sq: 'Makarona', en: 'Pasta' }, category: 'pantry', tags: ['gluten'], checkLabel: true },
   vermicelli: { name: { sq: 'Fide', en: 'Vermicelli' }, category: 'pantry', tags: ['gluten'], checkLabel: true },

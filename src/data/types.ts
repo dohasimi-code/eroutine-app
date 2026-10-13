@@ -30,10 +30,29 @@ export type RecipeIngredient = {
 // "light" dinners are short; lunches can also be served as a full dinner.
 export type Course = 'breakfast' | 'lunch' | 'light-dinner' | 'snack';
 
+// What the dish is built on. The menu avoids the same base two days running, and at
+// lunch and dinner on the same day (e.g. pasta then pasta again).
+export type Base =
+  | 'legumes'
+  | 'pastry'
+  | 'pasta'
+  | 'rice'
+  | 'potato'
+  | 'vegetables'
+  | 'meat'
+  | 'fish'
+  | 'soup'
+  | 'eggs'
+  | 'dairy'
+  | 'bread'
+  | 'dough'
+  | 'porridge';
+
 export type Recipe = {
   id: string;
   // Variants of one dish share a family (e.g. byrek with ready or home-made pastry).
   family: string;
+  base: Base;
   name: Localized;
   course: Course;
   budget: Budget;
@@ -45,4 +64,6 @@ export type Recipe = {
   ingredients: RecipeIngredient[];
   steps: { sq: string[]; en: string[] };
   leftoverTip?: Localized;
+  // Dishes that do not reheat well (fish, pasta in sauce) are never planned as next-day leftovers.
+  noLeftovers?: true;
 };

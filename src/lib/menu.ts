@@ -13,7 +13,8 @@ export type DinnerStyle = (typeof DINNER_STYLES)[number];
 
 export type Slot =
   | { kind: 'recipe'; recipeId: string; locked: boolean }
-  | { kind: 'leftovers'; locked: boolean }
+  // Reheated from the previous day's lunch, never the same day's: nobody wants byrek twice in one day.
+  | { kind: 'leftovers'; recipeId: string; locked: boolean }
   // Nothing fits the family's filters; the screen explains instead of guessing.
   | { kind: 'empty'; locked: false };
 
@@ -65,12 +66,20 @@ export function fitsProfile(recipe: Recipe, profile: FamilyProfile, { ignoreTime
 
 type Candidates = 'breakfast' | 'lunch' | 'light-dinner';
 
-// Safety (exclusions, budget) is never relaxed. Cooking time is relaxed only when nothing
-// else fits, because a slower dish is better than an empty slot.
+// A week needs at least this many different dishes per meal, or the same one comes back.
+export const MIN_CHOICES = 7;
+
+// Safety (exclusions, budget) is never relaxed. Cooking time is: when fewer than a week's
+// worth of dishes fit, the next quickest ones are added, because a slightly slower dish is
+// better than the same dish every day. Each dish shows its minutes, so she can see it.
 export function candidatesFor(course: Candidates, profile: FamilyProfile): Recipe[] {
   const ofCourse = RECIPES.filter((recipe) => recipe.course === course);
   const strict = ofCourse.filter((recipe) => fitsProfile(recipe, profile));
-  return strict.length > 0 ? strict : ofCourse.filter((recipe) => fitsProfile(recipe, profile, { ignoreTime: true }));
+  if (strict.length >= MIN_CHOICES) return strict;
+  const slower = ofCourse
+    .filter((recipe) => !strict.includes(recipe) && fitsProfile(recipe, profile, { ignoreTime: true }))
+    .sort((a, b) => totalMinutes(a) - totalMinutes(b));
+  return [...strict, ...slower.slice(0, MIN_CHOICES - strict.length)];
 }
 
 // Small seeded random generator so a week can be reproduced in tests.
@@ -110,27 +119,54 @@ function pantryFirst(recipes: Recipe[], random: () => number, pantry: ReadonlySe
     .map(({ recipe }) => recipe);
 }
 
-// Hands out recipes without repeating until the pool runs out, and avoids serving
-// two variants of the same dish on consecutive days.
-function makePicker(pool: Recipe[], random: () => number, alreadyUsed: Set<string>, pantry: ReadonlySet<string>) {
-  let queue = pantryFirst(pool.filter((recipe) => !alreadyUsed.has(recipe.id)), random, pantry);
-  let lastFamily: string | null = null;
-  return (): Recipe | null => {
+// Hands out recipes without repeating until the pool runs out. Dishes from last week come
+// last, and the same base (beans, pasta, pastry…) is not served two days running or twice
+// on the same day while something else is available.
+function makePicker(
+  pool: Recipe[],
+  random: () => number,
+  alreadyUsed: ReadonlySet<string>,
+  pantry: ReadonlySet<string>,
+  lastWeek: ReadonlySet<string>,
+) {
+  const fresh = pool.filter((recipe) => !alreadyUsed.has(recipe.id));
+  let queue = [
+    ...pantryFirst(fresh.filter((recipe) => !lastWeek.has(recipe.id)), random, pantry),
+    ...pantryFirst(fresh.filter((recipe) => lastWeek.has(recipe.id)), random, pantry),
+  ];
+  let lastBase: string | null = null;
+  return (avoid: ReadonlySet<string> = new Set()): Recipe | null => {
     if (pool.length === 0) return null;
     if (queue.length === 0) queue = shuffle(pool, random);
-    let index = queue.findIndex((recipe) => recipe.family !== lastFamily);
+    let index = queue.findIndex((recipe) => recipe.base !== lastBase && !avoid.has(recipe.base));
+    if (index === -1) index = queue.findIndex((recipe) => recipe.base !== lastBase);
     if (index === -1) index = 0;
     const [picked] = queue.splice(index, 1);
-    lastFamily = picked.family;
+    lastBase = picked.base;
     return picked;
   };
 }
+
+// The dish a leftovers dinner reheats: the previous day's lunch, if it keeps well.
+export function leftoverSource(previousLunch: Slot | undefined): string | null {
+  if (previousLunch?.kind !== 'recipe') return null;
+  return getRecipe(previousLunch.recipeId)?.noLeftovers ? null : previousLunch.recipeId;
+}
+
+// True when this day's lunch is also tomorrow's dinner, so she cooks a double amount.
+export function cooksForTomorrow(week: WeekMenu, dayIndex: number): boolean {
+  const lunch = week.days[dayIndex]?.lunch;
+  const tomorrow = week.days[dayIndex + 1]?.dinner;
+  return lunch?.kind === 'recipe' && tomorrow?.kind === 'leftovers' && tomorrow.recipeId === lunch.recipeId;
+}
+
+const baseOf = (slot: Slot): string | null => (slot.kind === 'recipe' ? (getRecipe(slot.recipeId)?.base ?? null) : null);
 
 function dinnerKindFor(style: DinnerStyle, dayIndex: number): 'light' | 'full' | 'leftovers' {
   if (style === 'light') return 'light';
   if (style === 'like-lunch') return 'full';
   if (style === 'leftovers') return 'leftovers';
-  // Mixed: mostly light dinners, with leftovers from lunch twice a week.
+  // Mixed: mostly light dinners, with the previous day's lunch twice a week.
   return dayIndex % 3 === 1 ? 'leftovers' : 'light';
 }
 
@@ -150,17 +186,20 @@ export function generateWeek(
     return slot && slot.locked ? slot : null;
   };
   const lockedIds = new Set<string>();
+  const lastWeek = new Set<string>();
   previous?.days.forEach((day) =>
     MEALS.forEach((meal) => {
       const slot = day[meal];
-      if (slot.locked && slot.kind === 'recipe') lockedIds.add(slot.recipeId);
+      if (slot.kind !== 'recipe') return;
+      if (slot.locked) lockedIds.add(slot.recipeId);
+      else lastWeek.add(slot.recipeId);
     }),
   );
 
-  const nextBreakfast = makePicker(candidatesFor('breakfast', profile), random, lockedIds, pantry);
-  const nextLunch = makePicker(candidatesFor('lunch', profile), random, lockedIds, pantry);
-  const nextLightDinner = makePicker(candidatesFor('light-dinner', profile), random, lockedIds, pantry);
-  const nextFullDinner = makePicker(candidatesFor('lunch', profile), random, lockedIds, pantry);
+  const nextBreakfast = makePicker(candidatesFor('breakfast', profile), random, lockedIds, pantry, lastWeek);
+  const nextLunch = makePicker(candidatesFor('lunch', profile), random, lockedIds, pantry, lastWeek);
+  const nextLightDinner = makePicker(candidatesFor('light-dinner', profile), random, lockedIds, pantry, lastWeek);
+  const nextFullDinner = makePicker(candidatesFor('lunch', profile), random, lockedIds, pantry, lastWeek);
 
   const days: DayPlan[] = [];
   for (let day = 0; day < 7; day++) {
@@ -169,18 +208,40 @@ export function generateWeek(
     let dinner = locked(day, 'dinner');
     if (!dinner) {
       const kind = dinnerKindFor(dinnerStyle, day);
-      if (kind === 'leftovers' && lunch.kind === 'recipe') dinner = { kind: 'leftovers', locked: false };
+      // Today's lunch base is avoided at dinner, so the same kind of dish never comes twice in a day.
+      const avoid = new Set([baseOf(lunch)].filter((base): base is string => base !== null));
+      const source = kind === 'leftovers' ? leftoverSource(days[day - 1]?.lunch) : null;
+      if (source) dinner = { kind: 'leftovers', recipeId: source, locked: false };
       else if (kind === 'full') {
-        let pick = nextFullDinner();
-        // Avoid serving the same dish twice in one day.
-        if (pick && lunch.kind === 'recipe' && pick.id === lunch.recipeId) pick = nextFullDinner();
+        let pick = nextFullDinner(avoid);
+        if (pick && lunch.kind === 'recipe' && pick.id === lunch.recipeId) pick = nextFullDinner(avoid);
         dinner = recipeSlot(pick);
       }
-      else dinner = recipeSlot(nextLightDinner());
+      // Monday, or a lunch that does not keep: a light dinner instead of leftovers.
+      else dinner = recipeSlot(nextLightDinner(avoid));
     }
     days.push({ breakfast, lunch, dinner });
   }
-  return { dinnerStyle, days };
+  return relinkLeftovers({ dinnerStyle, days }, profile, random);
+}
+
+// After a lunch is swapped (or a locked leftovers dinner is kept), each leftovers dinner must
+// still point at the previous day's lunch. If that lunch no longer gives leftovers, a light
+// dinner takes its place.
+export function relinkLeftovers(week: WeekMenu, profile: FamilyProfile, random: () => number): WeekMenu {
+  let current = week;
+  week.days.forEach((day, index) => {
+    if (day.dinner.kind !== 'leftovers') return;
+    const source = leftoverSource(current.days[index - 1]?.lunch);
+    if (source === day.dinner.recipeId) return;
+    if (source) {
+      current = replaceSlot(current, index, 'dinner', { kind: 'leftovers', recipeId: source, locked: day.dinner.locked });
+      return;
+    }
+    const [pick] = alternativesFor(current, index, 'dinner', profile, random, 1);
+    current = replaceSlot(current, index, 'dinner', recipeSlot(pick ?? null));
+  });
+  return current;
 }
 
 // Up to `count` other dishes for one slot, with dishes not yet in the week first.
@@ -206,10 +267,16 @@ export function alternativesFor(
     }),
   );
 
+  // Dishes built on the same base as another meal that day (pasta at lunch, pasta at dinner) come last.
+  const day = week.days[dayIndex];
+  const sameDayBases = new Set(MEALS.filter((m) => m !== meal).map((m) => baseOf(day[m])));
   const pool = candidatesFor(course, profile).filter((recipe) => recipe.id !== currentRecipe?.id);
-  const fresh = pantryFirst(pool.filter((recipe) => !inWeek.has(recipe.id)), random, pantry);
-  const repeats = pantryFirst(pool.filter((recipe) => inWeek.has(recipe.id)), random, pantry);
-  return [...fresh, ...repeats].slice(0, count);
+  const rank = (recipe: Recipe) => (inWeek.has(recipe.id) ? 2 : 0) + (sameDayBases.has(recipe.base) ? 1 : 0);
+  return pantryFirst(pool, random, pantry)
+    .map((recipe, order) => ({ recipe, order, rank: rank(recipe) }))
+    .sort((a, b) => a.rank - b.rank || a.order - b.order)
+    .slice(0, count)
+    .map(({ recipe }) => recipe);
 }
 
 export function replaceSlot(week: WeekMenu, dayIndex: number, meal: Meal, slot: Slot): WeekMenu {
@@ -234,7 +301,9 @@ function isSlot(value: unknown): value is Slot {
   if (!value || typeof value !== 'object') return false;
   const slot = value as Record<string, unknown>;
   if (slot.kind === 'recipe') return typeof slot.recipeId === 'string' && recipeById.has(slot.recipeId);
-  return slot.kind === 'leftovers' || slot.kind === 'empty';
+  // Leftovers saved before they named their dish are invalid; a new week is made instead.
+  if (slot.kind === 'leftovers') return typeof slot.recipeId === 'string' && recipeById.has(slot.recipeId);
+  return slot.kind === 'empty';
 }
 
 export async function loadWeek(store: KeyValueStore): Promise<WeekMenu | null> {

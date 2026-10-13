@@ -18,7 +18,7 @@ import {
 } from '../shopping';
 import { STORAGE_KEYS, createMemoryStore, deleteAllData } from '../storage';
 
-const leftovers = { kind: 'leftovers', locked: false } as const;
+const leftovers = { kind: 'empty', locked: false } as const;
 const recipe = (recipeId: string) => ({ kind: 'recipe', recipeId, locked: false }) as const;
 
 function weekOf(days: DayPlan[]): WeekMenu {
@@ -44,8 +44,17 @@ describe('buildShoppingList', () => {
     expect(find(forTwo, 'tomato')[0].quantity).toBe(4.5);
   });
 
-  it('ignores leftover and empty meals', () => {
+  it('ignores empty meals', () => {
     expect(buildShoppingList(weekOf([]), 4)).toEqual([]);
+  });
+
+  it('buys a second portion of a lunch that is reheated the next evening', () => {
+    // bean-stew: 400 g dried beans for 4; cooked on Monday, reheated on Tuesday evening.
+    const week = weekOf([
+      { breakfast: leftovers, lunch: recipe('bean-stew'), dinner: leftovers },
+      { breakfast: leftovers, lunch: leftovers, dinner: { kind: 'leftovers', recipeId: 'bean-stew', locked: false } },
+    ]);
+    expect(find(buildShoppingList(week, 4), 'driedBeans')[0].quantity).toBe(800);
   });
 
   it('marks optional-only ingredients and keeps them optional only while no meal needs them', () => {

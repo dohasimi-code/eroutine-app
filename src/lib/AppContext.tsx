@@ -8,6 +8,7 @@ import {
   generateWeek,
   getRecipe,
   loadWeek,
+  relinkLeftovers,
   replaceSlot,
   saveWeek,
   seededRandom,
@@ -203,9 +204,10 @@ export function AppProvider({ children, store = deviceStore }: { children: React
 
   const setSlot = useCallback(
     async (dayIndex: number, meal: Meal, slot: Slot) => {
-      if (week) await storeWeek(replaceSlot(week, dayIndex, meal, slot));
+      // Changing a lunch can change what tomorrow's leftovers dinner reheats.
+      if (week && profile) await storeWeek(relinkLeftovers(replaceSlot(week, dayIndex, meal, slot), profile, freshRandom()));
     },
-    [week, storeWeek],
+    [week, profile, storeWeek],
   );
 
   const toggleLock = useCallback(
