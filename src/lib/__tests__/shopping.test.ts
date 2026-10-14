@@ -1,5 +1,5 @@
 import type { IngredientId } from '../../data/ingredients';
-import { generateWeek, seededRandom, type DayPlan, type WeekMenu } from '../menu';
+import { generateWeek, seededRandom, type DayPlan, type Slot, type WeekMenu } from '../menu';
 import { DEFAULT_PROFILE } from '../profile';
 import {
   buildShoppingList,
@@ -19,7 +19,7 @@ import {
 import { STORAGE_KEYS, createMemoryStore, deleteAllData } from '../storage';
 
 const leftovers = { kind: 'empty', locked: false } as const;
-const recipe = (recipeId: string) => ({ kind: 'recipe', recipeId, locked: false }) as const;
+const recipe = (recipeId: string): Slot => ({ kind: 'recipe', recipeId, options: [recipeId], locked: false });
 
 function weekOf(days: DayPlan[]): WeekMenu {
   const empty: DayPlan = { breakfast: leftovers, lunch: leftovers, dinner: leftovers };
@@ -80,7 +80,7 @@ describe('buildShoppingList', () => {
 
   it('lists every ingredient of a generated week once, with one unit each', () => {
     for (let seed = 1; seed <= 30; seed++) {
-      const week = generateWeek({ ...DEFAULT_PROFILE, maxCookMinutes: 60, budget: 'medium' }, 'mixed', seededRandom(seed));
+      const week = generateWeek({ ...DEFAULT_PROFILE, budget: 'medium' }, 'mixed', seededRandom(seed));
       const items = buildShoppingList(week, 4);
       expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
       expect(items.every((item) => item.quantity > 0)).toBe(true);

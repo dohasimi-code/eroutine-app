@@ -16,8 +16,10 @@ describe('family profile', () => {
   });
 
   it('keeps valid answers', () => {
-    const profile = { people: 6, maxCookMinutes: 15, budget: 'medium', exclusions: ['eggs', 'gluten'], faithMoment: false };
+    const profile = { people: 6, budget: 'medium', exclusions: ['eggs', 'gluten'], faithMoment: false };
     expect(normalizeProfile(profile)).toEqual({ ...profile, exclusions: ['gluten', 'eggs'] });
+    // Profiles saved when there was a cooking-time question simply lose that answer.
+    expect(normalizeProfile({ ...profile, maxCookMinutes: 15 })).toEqual({ ...profile, exclusions: ['gluten', 'eggs'] });
   });
 
   it('drops unknown values instead of trusting them', () => {

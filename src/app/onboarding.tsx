@@ -7,7 +7,6 @@ import { LANGUAGES, type TranslationKey } from '../i18n';
 import { useApp } from '../lib/AppContext';
 import {
   BUDGET_OPTIONS,
-  COOK_TIME_OPTIONS,
   DEFAULT_PROFILE,
   EXCLUSION_OPTIONS,
   MAX_PEOPLE,
@@ -20,13 +19,12 @@ import { BodyText, Screen } from '../ui/Screen';
 import { Button, Choice } from '../ui/Choice';
 import { colors, fontSize, spacing } from '../ui/theme';
 
-const STEPS = ['language', 'people', 'cook', 'budget', 'exclusions', 'faith'] as const;
+const STEPS = ['language', 'people', 'budget', 'exclusions', 'faith'] as const;
 type Step = (typeof STEPS)[number];
 
 const STEP_TITLES: Record<Step, TranslationKey> = {
   language: 'onboarding.language.title',
   people: 'onboarding.people.title',
-  cook: 'onboarding.cook.title',
   budget: 'onboarding.budget.title',
   exclusions: 'onboarding.exclusions.title',
   faith: 'onboarding.faith.title',
@@ -98,16 +96,6 @@ export default function OnboardingScreen() {
             </Pressable>
           </View>
         )}
-
-        {step === 'cook' &&
-          COOK_TIME_OPTIONS.map((minutes) => (
-            <Choice
-              key={minutes}
-              label={minutes === 60 ? t('onboarding.cook.60') : t('onboarding.cook.minutes', { n: minutes })}
-              selected={draft.maxCookMinutes === minutes}
-              onPress={() => update({ maxCookMinutes: minutes })}
-            />
-          ))}
 
         {step === 'budget' &&
           BUDGET_OPTIONS.map((budget) => (

@@ -4,18 +4,19 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { IngredientId } from '../data/ingredients';
 import { pickInitialLanguage, translate, type Language, type TranslationKey, type TranslationParams } from '../i18n';
 import {
+  chooseOption,
+  fillOptions,
   fitsProfile,
   generateWeek,
   getRecipe,
   loadWeek,
+  otherOptions,
   relinkLeftovers,
-  replaceSlot,
   saveWeek,
   seededRandom,
-  toggleLock as toggleSlotLock,
+  setDone,
   type DinnerStyle,
   type Meal,
-  type Slot,
   type WeekMenu,
 } from './menu';
 import {
@@ -58,8 +59,11 @@ type AppContextValue = {
   saveProfile(profile: FamilyProfile): Promise<void>;
   week: WeekMenu | null;
   newWeek(dinnerStyle?: DinnerStyle): Promise<void>;
-  setSlot(dayIndex: number, meal: Meal, slot: Slot): Promise<void>;
-  toggleLock(dayIndex: number, meal: Meal): Promise<void>;
+  // Picks one of the three dishes offered for a meal.
+  chooseMeal(dayIndex: number, meal: Meal, recipeId: string): Promise<void>;
+  markDone(dayIndex: number, meal: Meal, done: boolean): Promise<void>;
+  // Replaces the three offered dishes with three others.
+  showOtherOptions(dayIndex: number, meal: Meal): Promise<void>;
   prices: PriceBook;
   setPrice(id: IngredientId, price: Price | null): Promise<void>;
   listState: ListState;
@@ -94,7 +98,7 @@ function dropLocksThatNoLongerFit(week: WeekMenu, profile: FamilyProfile): WeekM
         const slot = day[meal];
         if (slot.kind === 'recipe' && slot.locked) {
           const recipe = getRecipe(slot.recipeId);
-          if (!recipe || !fitsProfile(recipe, profile, { ignoreTime: true })) next[meal] = { ...slot, locked: false };
+          if (!recipe || !fitsProfile(recipe, profile)) next[meal] = { ...slot, locked: false };
         }
       }
       return next;
@@ -202,17 +206,32 @@ export function AppProvider({ children, store = deviceStore }: { children: React
     [profile, week, pantry, storeNewWeek],
   );
 
-  const setSlot = useCallback(
-    async (dayIndex: number, meal: Meal, slot: Slot) => {
-      // Changing a lunch can change what tomorrow's leftovers dinner reheats.
-      if (week && profile) await storeWeek(relinkLeftovers(replaceSlot(week, dayIndex, meal, slot), profile, freshRandom()));
+  // Changing a lunch can change what tomorrow's leftovers dinner reheats.
+  const relinked = useCallback(
+    (next: WeekMenu) => {
+      const random = freshRandom();
+      return fillOptions(relinkLeftovers(next, profile!, random), profile!, random, new Set(pantry));
     },
-    [week, profile, storeWeek],
+    [profile, pantry],
   );
 
-  const toggleLock = useCallback(
+  const chooseMeal = useCallback(
+    async (dayIndex: number, meal: Meal, recipeId: string) => {
+      if (week && profile) await storeWeek(relinked(chooseOption(week, dayIndex, meal, recipeId)));
+    },
+    [week, profile, relinked, storeWeek],
+  );
+
+  const showOtherOptions = useCallback(
     async (dayIndex: number, meal: Meal) => {
-      if (week) await storeWeek(toggleSlotLock(week, dayIndex, meal));
+      if (week && profile) await storeWeek(relinked(otherOptions(week, dayIndex, meal, profile, freshRandom(), new Set(pantry))));
+    },
+    [week, profile, pantry, relinked, storeWeek],
+  );
+
+  const markDone = useCallback(
+    async (dayIndex: number, meal: Meal, done: boolean) => {
+      if (week) await storeWeek(setDone(week, dayIndex, meal, done));
     },
     [week, storeWeek],
   );
@@ -333,8 +352,9 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       saveProfile,
       week,
       newWeek,
-      setSlot,
-      toggleLock,
+      chooseMeal,
+      markDone,
+      showOtherOptions,
       prices,
       setPrice,
       listState,
@@ -362,8 +382,9 @@ export function AppProvider({ children, store = deviceStore }: { children: React
       saveProfile,
       week,
       newWeek,
-      setSlot,
-      toggleLock,
+      chooseMeal,
+      markDone,
+      showOtherOptions,
       prices,
       setPrice,
       listState,

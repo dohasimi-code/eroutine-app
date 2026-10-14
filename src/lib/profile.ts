@@ -1,8 +1,5 @@
 import { STORAGE_KEYS, type KeyValueStore } from './storage';
 
-export const COOK_TIME_OPTIONS = [15, 30, 45, 60] as const;
-export type CookTime = (typeof COOK_TIME_OPTIONS)[number];
-
 export const BUDGET_OPTIONS = ['saver', 'medium'] as const;
 export type Budget = (typeof BUDGET_OPTIONS)[number];
 
@@ -16,7 +13,6 @@ export const MAX_PEOPLE = 10;
 
 export type FamilyProfile = {
   people: number;
-  maxCookMinutes: CookTime;
   budget: Budget;
   exclusions: Exclusion[];
   faithMoment: boolean;
@@ -25,7 +21,6 @@ export type FamilyProfile = {
 // Every onboarding question can be skipped, so these defaults must always produce a usable menu.
 export const DEFAULT_PROFILE: FamilyProfile = {
   people: 4,
-  maxCookMinutes: 30,
   budget: 'saver',
   exclusions: [],
   faithMoment: true,
@@ -39,14 +34,12 @@ export function clampPeople(value: number): number {
 // Accepts anything read back from storage and returns a valid profile, filling gaps with defaults.
 export function normalizeProfile(input: unknown): FamilyProfile {
   const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
-  const cook = COOK_TIME_OPTIONS.find((option) => option === raw.maxCookMinutes);
   const budget = BUDGET_OPTIONS.find((option) => option === raw.budget);
   const exclusions = Array.isArray(raw.exclusions)
     ? EXCLUSION_OPTIONS.filter((option) => (raw.exclusions as unknown[]).includes(option))
     : [];
   return {
     people: typeof raw.people === 'number' ? clampPeople(raw.people) : DEFAULT_PROFILE.people,
-    maxCookMinutes: cook ?? DEFAULT_PROFILE.maxCookMinutes,
     budget: budget ?? DEFAULT_PROFILE.budget,
     exclusions,
     faithMoment: typeof raw.faithMoment === 'boolean' ? raw.faithMoment : DEFAULT_PROFILE.faithMoment,

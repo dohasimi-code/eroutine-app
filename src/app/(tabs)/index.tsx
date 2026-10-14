@@ -4,9 +4,9 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { MEAL_PRAYERS, PLAN } from '../../data/plan';
 import { greetingKey } from '../../i18n';
 import { useApp } from '../../lib/AppContext';
-import { MEALS, cooksForTomorrow, weekdayIndex } from '../../lib/menu';
+import { weekdayIndex } from '../../lib/menu';
 import { currentDayIndex, isPlanFinished } from '../../lib/moment';
-import { MealRow } from '../../ui/MealRow';
+import { DayMeals } from '../../ui/DayMeals';
 import { Card, Screen } from '../../ui/Screen';
 import { colors, fontSize } from '../../ui/theme';
 
@@ -16,13 +16,7 @@ export default function TodayScreen() {
   const day = week?.days[weekday];
   return (
     <Screen title={t(greetingKey(new Date().getHours()))} subtitle={t('today.subtitle')}>
-      {day ? (
-        <Card>
-          {MEALS.map((meal) => (
-            <MealRow key={meal} meal={meal} slot={day[meal]} cookExtra={meal === 'lunch' && cooksForTomorrow(week!, weekday)} />
-          ))}
-        </Card>
-      ) : null}
+      {day ? <DayMeals dayIndex={weekday} /> : null}
       {profile?.faithMoment ? (
         <>
           <Card>

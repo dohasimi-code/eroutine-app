@@ -1,17 +1,23 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { INGREDIENTS, type IngredientId } from '../../data/ingredients';
 import { useApp } from '../../lib/AppContext';
-import { getRecipe, recipeTags } from '../../lib/menu';
+import { MEALS, getRecipe, recipeTags, type Meal } from '../../lib/menu';
 import { formatQuantity, scaleQuantity } from '../../lib/quantity';
+import { Button } from '../../ui/Choice';
 import { BodyText, Card, Screen } from '../../ui/Screen';
 import { colors, fontSize, spacing } from '../../ui/theme';
 
 export default function RecipeScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { t, language, profile } = useApp();
+  // Opened from a planned meal, the recipe can be ticked off right here after cooking.
+  const { id, day, meal } = useLocalSearchParams<{ id: string; day?: string; meal?: string }>();
+  const { t, language, profile, week, markDone } = useApp();
   const recipe = getRecipe(id);
+  const dayIndex = Number(day);
+  const plannedMeal = MEALS.find((m) => m === meal) as Meal | undefined;
+  const slot = plannedMeal && week?.days[dayIndex]?.[plannedMeal];
+  const canMarkDone = slot && slot.kind !== 'empty' && slot.recipeId === id && !slot.done;
 
   if (!recipe) {
     return (
@@ -72,6 +78,16 @@ export default function RecipeScreen() {
           <Text style={styles.heading}>{t('recipe.leftovers')}</Text>
           <BodyText>{recipe.leftoverTip[language]}</BodyText>
         </Card>
+      ) : null}
+
+      {canMarkDone ? (
+        <Button
+          label={t('meal.markDone')}
+          onPress={async () => {
+            await markDone(dayIndex, plannedMeal!, true);
+            router.back();
+          }}
+        />
       ) : null}
 
       <BodyText muted>{t('recipe.draft')}</BodyText>

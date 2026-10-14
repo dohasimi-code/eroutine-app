@@ -3,6 +3,8 @@ import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { LANGUAGES } from '../i18n';
 import { useApp } from '../lib/AppContext';
+import { DINNER_STYLES } from '../lib/menu';
+import { Choice } from '../ui/Choice';
 import { BodyText, Card, Screen } from '../ui/Screen';
 import { colors, fontSize, spacing } from '../ui/theme';
 
@@ -15,7 +17,7 @@ const STORED_KEYS = [
 ] as const;
 
 export default function SettingsScreen() {
-  const { t, language, setLanguage, profile, resetAllData } = useApp();
+  const { t, language, setLanguage, profile, resetAllData, week, newWeek, pantry } = useApp();
 
   function confirmDelete() {
     Alert.alert(t('settings.delete.confirmTitle'), t('settings.delete.confirmBody'), [
@@ -62,13 +64,28 @@ export default function SettingsScreen() {
             <BodyText muted>
               {t('settings.profile.summary', {
                 people: profile.people,
-                minutes: profile.maxCookMinutes,
                 budget: t(`onboarding.budget.${profile.budget}`),
               })}
             </BodyText>
           </Card>
         </Pressable>
       ) : null}
+
+      {week ? (
+        <Card>
+          <Text style={styles.heading}>{t('week.dinners')}</Text>
+          {DINNER_STYLES.map((style) => (
+            <Choice key={style} label={t(`dinnerStyle.${style}`)} selected={week.dinnerStyle === style} onPress={() => newWeek(style)} />
+          ))}
+        </Card>
+      ) : null}
+
+      <Pressable onPress={() => router.push('/pantry')} accessibilityRole="button">
+        <Card>
+          <Text style={styles.heading}>{t('week.pantry')}</Text>
+          <BodyText muted>{pantry.length > 0 ? t('pantry.summary', { n: pantry.length }) : t('pantry.empty')}</BodyText>
+        </Card>
+      </Pressable>
 
       <Card>
         <Text style={styles.heading}>{t('settings.reminders')}</Text>

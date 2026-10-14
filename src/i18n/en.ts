@@ -2,7 +2,7 @@ import type { TranslationKey } from './sq';
 
 export const en: Record<TranslationKey, string> = {
   'tabs.today': 'Today',
-  'tabs.menu': 'Menu',
+  'tabs.menu': 'Week',
   'tabs.list': 'List',
   'tabs.moment': 'My moment',
 
@@ -180,7 +180,7 @@ export const en: Record<TranslationKey, string> = {
   'exclusion.meat': 'No meat or fish (vegetarian)',
 
   'settings.profile': 'Family profile',
-  'settings.profile.summary': '{people} people · up to {minutes} min · {budget}',
+  'settings.profile.summary': '{people} people · {budget}',
 
   'meal.breakfast': 'Breakfast',
   'meal.lunch': 'Lunch',
@@ -191,6 +191,17 @@ export const en: Record<TranslationKey, string> = {
   'meal.empty': 'No dish matches your profile for this meal.',
   'meal.minutes': '{n} min',
   'meal.soak': '+ soak {n} h the night before',
+  'meal.pick': 'Pick one:',
+  'meal.howTo': 'How to cook it',
+  'meal.markDone': 'Done ✓',
+  'meal.done': 'Done',
+  'meal.undo': 'Undo',
+  'meal.others': 'Show 3 others',
+  'settings.back': 'Back',
+  'week.title': 'Week',
+  'week.hint': 'Tap a day to choose its meals.',
+  'week.dinners': 'Dinners',
+  'week.pantry': 'What I have at home',
 
   'day.0': 'Monday',
   'day.1': 'Tuesday',
@@ -207,7 +218,7 @@ export const en: Record<TranslationKey, string> = {
   'dinnerStyle.like-lunch': 'Like lunch',
   'dinnerStyle.leftovers': 'Leftovers',
   'menu.newWeek': 'Make a new week',
-  'menu.newWeek.hint': 'Locked meals 🔒 stay as they are.',
+  'menu.newWeek.hint': 'Brings new dishes for the whole week.',
   'menu.swap': 'Swap',
   'menu.lock': 'Lock',
   'menu.unlock': 'Unlock',
