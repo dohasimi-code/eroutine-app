@@ -1,7 +1,7 @@
 // Shqip: gjuha kryesore e aplikacionit.
 export const sq = {
   'tabs.today': 'Sot',
-  'tabs.menu': 'Menuja',
+  'tabs.menu': 'Java',
   'tabs.list': 'Lista',
   'tabs.moment': 'Momenti im',
 
@@ -179,7 +179,7 @@ export const sq = {
   'exclusion.meat': 'Pa mish e peshk (vegjetariane)',
 
   'settings.profile': 'Profili i familjes',
-  'settings.profile.summary': '{people} veta · deri në {minutes} min · {budget}',
+  'settings.profile.summary': '{people} veta · {budget}',
 
   'meal.breakfast': 'Mëngjes',
   'meal.lunch': 'Drekë',
@@ -190,6 +190,17 @@ export const sq = {
   'meal.empty': 'Asnjë gatim nuk përputhet me profilin tënd për këtë vakt.',
   'meal.minutes': '{n} min',
   'meal.soak': '+ njomje {n} orë një natë më parë',
+  'meal.pick': 'Zgjidh një:',
+  'meal.howTo': 'Si gatuhet',
+  'meal.markDone': 'E bëra ✓',
+  'meal.done': 'U bë',
+  'meal.undo': 'Ktheje',
+  'meal.others': 'Trego 3 të tjera',
+  'settings.back': 'Mbrapa',
+  'week.title': 'Java',
+  'week.hint': 'Prek një ditë për të zgjedhur gatimet e saj.',
+  'week.dinners': 'Darkat',
+  'week.pantry': 'Çfarë kam në shtëpi',
 
   'day.0': 'E hënë',
   'day.1': 'E martë',
@@ -206,7 +217,7 @@ export const sq = {
   'dinnerStyle.like-lunch': 'Si dreka',
   'dinnerStyle.leftovers': 'Nga mbetjet',
   'menu.newWeek': 'Krijo javë të re',
-  'menu.newWeek.hint': 'Vaktet e bllokuara 🔒 mbeten siç janë.',
+  'menu.newWeek.hint': 'Sjell gatime të reja për gjithë javën.',
   'menu.swap': 'Ndërro',
   'menu.lock': 'Blloko',
   'menu.unlock': 'Zhblloko',

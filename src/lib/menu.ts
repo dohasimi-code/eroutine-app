@@ -12,9 +12,10 @@ export const DINNER_STYLES = ['mixed', 'light', 'like-lunch', 'leftovers'] as co
 export type DinnerStyle = (typeof DINNER_STYLES)[number];
 
 export type Slot =
-  | { kind: 'recipe'; recipeId: string; locked: boolean }
+  // Three dishes to pick from, quickest first; recipeId is the one she picked (or the first).
+  | { kind: 'recipe'; recipeId: string; options: string[]; done?: boolean; locked: boolean }
   // Reheated from the previous day's lunch, never the same day's: nobody wants byrek twice in one day.
-  | { kind: 'leftovers'; recipeId: string; locked: boolean }
+  | { kind: 'leftovers'; recipeId: string; done?: boolean; locked: boolean }
   // Nothing fits the family's filters; the screen explains instead of guessing.
   | { kind: 'empty'; locked: false };
 
@@ -55,31 +56,20 @@ function blockedTags(exclusions: Exclusion[]): Set<Tag> {
   return blocked;
 }
 
-export function fitsProfile(recipe: Recipe, profile: FamilyProfile, { ignoreTime = false } = {}): boolean {
+// Cooking time is not a filter: each meal offers a quick and a slower dish, with minutes
+// shown, and she picks (Donald's feedback, 14 Oct 2026).
+export function fitsProfile(recipe: Recipe, profile: FamilyProfile): boolean {
   const blocked = blockedTags(profile.exclusions);
   if (recipeTags(recipe).some((tag) => blocked.has(tag))) return false;
   if (profile.budget === 'saver' && recipe.budget !== 'saver') return false;
-  // 60 is the "45 minutes or more" answer: no time limit.
-  if (!ignoreTime && profile.maxCookMinutes < 60 && totalMinutes(recipe) > profile.maxCookMinutes) return false;
   return true;
 }
 
 type Candidates = 'breakfast' | 'lunch' | 'light-dinner';
 
-// A week needs at least this many different dishes per meal, or the same one comes back.
-export const MIN_CHOICES = 7;
-
-// Safety (exclusions, budget) is never relaxed. Cooking time is: when fewer than a week's
-// worth of dishes fit, the next quickest ones are added, because a slightly slower dish is
-// better than the same dish every day. Each dish shows its minutes, so she can see it.
+// Exclusions and budget are never relaxed.
 export function candidatesFor(course: Candidates, profile: FamilyProfile): Recipe[] {
-  const ofCourse = RECIPES.filter((recipe) => recipe.course === course);
-  const strict = ofCourse.filter((recipe) => fitsProfile(recipe, profile));
-  if (strict.length >= MIN_CHOICES) return strict;
-  const slower = ofCourse
-    .filter((recipe) => !strict.includes(recipe) && fitsProfile(recipe, profile, { ignoreTime: true }))
-    .sort((a, b) => totalMinutes(a) - totalMinutes(b));
-  return [...strict, ...slower.slice(0, MIN_CHOICES - strict.length)];
+  return RECIPES.filter((recipe) => recipe.course === course && fitsProfile(recipe, profile));
 }
 
 // Small seeded random generator so a week can be reproduced in tests.
@@ -171,7 +161,68 @@ function dinnerKindFor(style: DinnerStyle, dayIndex: number): 'light' | 'full' |
 }
 
 const recipeSlot = (recipe: Recipe | null): Slot =>
-  recipe ? { kind: 'recipe', recipeId: recipe.id, locked: false } : { kind: 'empty', locked: false };
+  recipe ? { kind: 'recipe', recipeId: recipe.id, options: [recipe.id], locked: false } : { kind: 'empty', locked: false };
+
+export const OPTION_COUNT = 3;
+const byTime = (ids: string[]) => [...ids].sort((a, b) => totalMinutes(getRecipe(a)!) - totalMinutes(getRecipe(b)!));
+
+// The quickest and the slowest of the candidates, so the three choices span the time range
+// (e.g. bread and butter 5 min, eggs and cheese 10 min, omelette 20 min).
+function spreadByTime(candidates: Recipe[], count: number): Recipe[] {
+  const sorted = [...candidates].sort((a, b) => totalMinutes(a) - totalMinutes(b));
+  if (sorted.length <= count) return sorted;
+  const picked = [sorted[0], sorted[sorted.length - 1]];
+  for (const recipe of candidates) {
+    if (picked.length >= count) break;
+    if (!picked.includes(recipe)) picked.push(recipe);
+  }
+  return picked.slice(0, count);
+}
+
+// Gives every planned dish two more choices for the same meal.
+export function fillOptions(week: WeekMenu, profile: FamilyProfile, random: () => number, pantry: ReadonlySet<string> = new Set()): WeekMenu {
+  let current = week;
+  week.days.forEach((day, dayIndex) =>
+    MEALS.forEach((meal) => {
+      const slot = current.days[dayIndex][meal];
+      if (slot.kind !== 'recipe' || slot.options.length >= OPTION_COUNT) return;
+      const extra = spreadByTime(alternativesFor(current, dayIndex, meal, profile, random, 6, pantry), OPTION_COUNT - 1);
+      const options = byTime([slot.recipeId, ...extra.map((recipe) => recipe.id)]);
+      current = replaceSlot(current, dayIndex, meal, { ...slot, options });
+    }),
+  );
+  return current;
+}
+
+// Three different dishes when none of the offered ones suits her.
+export function otherOptions(
+  week: WeekMenu,
+  dayIndex: number,
+  meal: Meal,
+  profile: FamilyProfile,
+  random: () => number,
+  pantry: ReadonlySet<string> = new Set(),
+): WeekMenu {
+  const slot = week.days[dayIndex][meal];
+  if (slot.kind !== 'recipe') return week;
+  const shown = new Set(slot.options);
+  const fresh = alternativesFor(week, dayIndex, meal, profile, random, 12, pantry).filter((recipe) => !shown.has(recipe.id));
+  if (fresh.length === 0) return week;
+  const options = byTime(spreadByTime(fresh, OPTION_COUNT).map((recipe) => recipe.id));
+  return replaceSlot(week, dayIndex, meal, { ...slot, recipeId: options[0], options, done: false });
+}
+
+export function chooseOption(week: WeekMenu, dayIndex: number, meal: Meal, recipeId: string): WeekMenu {
+  const slot = week.days[dayIndex][meal];
+  if (slot.kind !== 'recipe' || !slot.options.includes(recipeId)) return week;
+  return replaceSlot(week, dayIndex, meal, { ...slot, recipeId, done: false });
+}
+
+export function setDone(week: WeekMenu, dayIndex: number, meal: Meal, done: boolean): WeekMenu {
+  const slot = week.days[dayIndex][meal];
+  if (slot.kind === 'empty') return week;
+  return replaceSlot(week, dayIndex, meal, { ...slot, done });
+}
 
 export function generateWeek(
   profile: FamilyProfile,
@@ -222,7 +273,7 @@ export function generateWeek(
     }
     days.push({ breakfast, lunch, dinner });
   }
-  return relinkLeftovers({ dinnerStyle, days }, profile, random);
+  return fillOptions(relinkLeftovers({ dinnerStyle, days }, profile, random), profile, random, pantry);
 }
 
 // After a lunch is swapped (or a locked leftovers dinner is kept), each leftovers dinner must
@@ -263,7 +314,9 @@ export function alternativesFor(
   week.days.forEach((day) =>
     MEALS.forEach((m) => {
       const slot = day[m];
-      if (slot.kind === 'recipe') inWeek.add(slot.recipeId);
+      // Dishes already offered as a choice count too, so each day offers something new.
+      if (slot.kind === 'recipe') slot.options.forEach((id) => inWeek.add(id));
+      if (slot.kind === 'leftovers') inWeek.add(slot.recipeId);
     }),
   );
 
@@ -300,7 +353,15 @@ export function weekdayIndex(date: Date): number {
 function isSlot(value: unknown): value is Slot {
   if (!value || typeof value !== 'object') return false;
   const slot = value as Record<string, unknown>;
-  if (slot.kind === 'recipe') return typeof slot.recipeId === 'string' && recipeById.has(slot.recipeId);
+  // Weeks saved before meals had three choices are replaced by a new week.
+  if (slot.kind === 'recipe') {
+    return (
+      typeof slot.recipeId === 'string' &&
+      Array.isArray(slot.options) &&
+      slot.options.includes(slot.recipeId) &&
+      slot.options.every((id) => typeof id === 'string' && recipeById.has(id))
+    );
+  }
   // Leftovers saved before they named their dish are invalid; a new week is made instead.
   if (slot.kind === 'leftovers') return typeof slot.recipeId === 'string' && recipeById.has(slot.recipeId);
   return slot.kind === 'empty';

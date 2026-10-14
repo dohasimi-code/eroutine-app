@@ -3,7 +3,10 @@ import { RECIPES } from '../../data/recipes';
 import {
   DINNER_STYLES,
   MEALS,
-  MIN_CHOICES,
+  OPTION_COUNT,
+  chooseOption,
+  otherOptions,
+  setDone,
   alternativesFor,
   candidatesFor,
   cooksForTomorrow,
@@ -24,7 +27,7 @@ import {
 import { DEFAULT_PROFILE, EXCLUSION_OPTIONS, type FamilyProfile } from '../profile';
 import { STORAGE_KEYS, createMemoryStore } from '../storage';
 
-const profile = (patch: Partial<FamilyProfile> = {}): FamilyProfile => ({ ...DEFAULT_PROFILE, maxCookMinutes: 60, ...patch });
+const profile = (patch: Partial<FamilyProfile> = {}): FamilyProfile => ({ ...DEFAULT_PROFILE, ...patch });
 
 function recipesIn(week: WeekMenu) {
   return week.days.flatMap((day) =>
@@ -99,19 +102,8 @@ describe('filters', () => {
     expect(lunches.map((r) => r.id)).not.toContain('tave-kosi');
   });
 
-  it('respects cooking time, and adds the next quickest dishes only when too few fit', () => {
-    const quick = profile({ maxCookMinutes: 30 });
-    expect(candidatesFor('light-dinner', quick).every((recipe) => totalMinutes(recipe) <= 30)).toBe(true);
-    expect(fitsProfile(getRecipe('bean-stew')!, quick)).toBe(false);
-    // Few thrifty lunches take 30 minutes or less: the quickest of the rest fill the week
-    // instead of one dish coming back every day (Donald's phone test, 13 Oct 2026).
-    const tight = profile({ maxCookMinutes: 30, budget: 'saver' });
-    const lunches = candidatesFor('lunch', tight);
-    expect(lunches.length).toBe(MIN_CHOICES);
-    const within = lunches.filter((recipe) => totalMinutes(recipe) <= 30);
-    expect(lunches.slice(0, within.length)).toEqual(within);
-    const week = generateWeek(tight, 'light', seededRandom(1));
-    expect(new Set(week.days.map((d) => (d.lunch.kind === 'recipe' ? d.lunch.recipeId : ''))).size).toBe(7);
+  it('does not filter by cooking time: slow dishes are offered next to quick ones', () => {
+    expect(candidatesFor('lunch', profile()).map((r) => r.id)).toContain('bean-stew');
   });
 
   it('snacks such as sutliash are never in the weekly menu', () => {
@@ -188,7 +180,7 @@ describe('weekly menu', () => {
   });
 
   it('only uses dishes that fit the family', () => {
-    const p = profile({ exclusions: ['gluten', 'dairy'], budget: 'saver', maxCookMinutes: 45 });
+    const p = profile({ exclusions: ['gluten', 'dairy'], budget: 'saver' });
     for (const style of DINNER_STYLES) {
       const week = generateWeek(p, style, seededRandom(4));
       for (const recipe of recipesIn(week)) {
@@ -237,16 +229,63 @@ describe('swapping one meal', () => {
   });
 });
 
+describe('three choices per meal', () => {
+  it('offers three different dishes for each meal, quickest first, one of them picked', () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const week = generateWeek(profile(), 'light', seededRandom(seed));
+      for (const day of week.days) {
+        for (const meal of MEALS) {
+          const slot = day[meal];
+          if (slot.kind !== 'recipe') continue;
+          expect(slot.options).toHaveLength(OPTION_COUNT);
+          expect(new Set(slot.options).size).toBe(OPTION_COUNT);
+          expect(slot.options).toContain(slot.recipeId);
+          const minutes = slot.options.map((id) => totalMinutes(getRecipe(id)!));
+          expect([...minutes].sort((a, b) => a - b)).toEqual(minutes);
+          for (const id of slot.options) expect(getRecipe(id)!.course).toBe(getRecipe(slot.recipeId)!.course);
+        }
+      }
+    }
+  });
+
+  it('spans quick and slower dishes', () => {
+    const week = generateWeek(profile({ budget: 'medium' }), 'light', seededRandom(3));
+    const lunch = week.days[0].lunch;
+    if (lunch.kind !== 'recipe') throw new Error('expected a lunch');
+    const minutes = lunch.options.map((id) => totalMinutes(getRecipe(id)!));
+    expect(minutes[2] - minutes[0]).toBeGreaterThanOrEqual(20);
+  });
+
+  it('lets her pick one, tick it done, or see three others', () => {
+    const week = generateWeek(profile(), 'light', seededRandom(4));
+    const slot = week.days[1].breakfast;
+    if (slot.kind !== 'recipe') throw new Error('expected a breakfast');
+    const other = slot.options.find((id) => id !== slot.recipeId)!;
+    const picked = chooseOption(week, 1, 'breakfast', other);
+    expect(picked.days[1].breakfast).toEqual(expect.objectContaining({ recipeId: other, done: false }));
+    expect(chooseOption(week, 1, 'breakfast', 'not-offered')).toBe(week);
+
+    const done = setDone(picked, 1, 'breakfast', true);
+    expect(done.days[1].breakfast).toEqual(expect.objectContaining({ recipeId: other, done: true }));
+
+    const fresh = otherOptions(week, 1, 'breakfast', profile(), seededRandom(5));
+    const next = fresh.days[1].breakfast;
+    if (next.kind !== 'recipe') throw new Error('expected a breakfast');
+    expect(next.options.some((id) => slot.options.includes(id))).toBe(false);
+    expect(next.options).toContain(next.recipeId);
+  });
+});
+
 describe('changing a lunch', () => {
   it('moves the next evening\'s leftovers with it, or plans a light dinner instead', () => {
     const week = generateWeek(profile(), 'leftovers', seededRandom(13));
     const day = week.days.findIndex((d, i) => i > 0 && d.dinner.kind === 'leftovers');
-    const pasta = replaceSlot(week, day - 1, 'lunch', { kind: 'recipe', recipeId: 'pasta-tomato', locked: false });
+    const pasta = replaceSlot(week, day - 1, 'lunch', { kind: 'recipe', recipeId: 'pasta-tomato', options: ['pasta-tomato'], locked: false });
     const relinked = relinkLeftovers(pasta, profile(), seededRandom(14));
     expect(relinked.days[day].dinner.kind).toBe('recipe');
     expect(getRecipe((relinked.days[day].dinner as { recipeId: string }).recipeId)!.course).toBe('light-dinner');
 
-    const beans = replaceSlot(week, day - 1, 'lunch', { kind: 'recipe', recipeId: 'bean-stew', locked: false });
+    const beans = replaceSlot(week, day - 1, 'lunch', { kind: 'recipe', recipeId: 'bean-stew', options: ['bean-stew'], locked: false });
     expect(relinkLeftovers(beans, profile(), seededRandom(14)).days[day].dinner).toEqual({ kind: 'leftovers', recipeId: 'bean-stew', locked: false });
   });
 });
