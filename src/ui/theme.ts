@@ -1,14 +1,15 @@
-// Warm kitchen-in-the-morning palette (design doc 04). No red for "errors".
 export const colors = {
-  background: '#F7F1E8',
-  surface: '#FFFBF5',
-  text: '#2E2A26',
-  textMuted: '#6E665E',
-  primary: '#5E7A4E',
-  accent: '#C9774F',
-  border: '#E6DCCD',
+  bg: '#FAF6EF',
+  card: '#FFFFFF',
+  text: '#2B2622',
+  muted: '#8A8077',
+  line: '#E8DFD2',
+  accent: '#B08D57', // shampanjë
+  accentDark: '#8C6D3F',
+  sage: '#8FA38A',
+  danger: '#B3453B',
+  onAccent: '#FFFFFF',
 };
 
-export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
-
-export const fontSize = { body: 17, small: 15, title: 26, heading: 20 };
+export const radius = { sm: 10, md: 16, lg: 24 };
+export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };

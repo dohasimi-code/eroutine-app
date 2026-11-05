@@ -1,33 +1,18 @@
-# Eroutine _(emër pune)_
+# Vowsnap _(emër pune)_
 
-**SQ:** Aplikacion për gra dhe nëna të lodhura dhe të mbingarkuara. Ndihmon me menunë javore të familjes, listën e blerjeve dhe një rutinë të shkurtër e të butë leximi biblik dhe lutjeje, pa faj dhe sipas ritmit të saj. Tregu i parë: Shqipëria. Gjuhët: shqip dhe anglisht.
+Aplikacion "kamerë njëpërdorimshe" për dasma: çifti krijon një album, printon një QR, të ftuarit fotografojnë (me limit fotosh si kamerat e vërteta) dhe të gjitha fotot mblidhen në një album të përbashkët.
 
-**EN:** An app for tired, overwhelmed women and mothers. It plans the family's weekly meals, builds the shopping list, and offers a short, gentle Bible-reading and prayer routine, guilt-free and at her own pace. First market: Albania. Languages: Albanian and English.
+## Statusi: prototip lokal (v0.1)
 
-## Çfarë bën / What it does
+Funksionon: krijim dasme, QR + link ftese, kamerë me limit për të ftuar, album, shfaqje e fotove "pas dasmës", fshirje.
 
-- Menu javore për mëngjes, drekë dhe darkë, sipas numrit të personave, kohës, buxhetit dhe përjashtimeve ushqimore
-- Ndërrim i një vakti pa rindërtuar gjithë javën
-- Listë blerjesh me çmime të vlerësuara që përdoruesja i ndryshon
-- "Momenti im": plane leximi si referenca, reflektime dhe lutje të shkurtra (AL/EN), tekst KJV në anglisht, ditar privat lutjesh
-- Rutina të personalizuara dhe kujtesa opsionale, me ton të butë
+**Nuk funksionon ende (e domosdoshme para shitjes):** album i përbashkët mes telefonave të ndryshëm. Sot gjithçka ruhet vetëm në këtë telefon. `src/lib/repository.ts` është kufiri me backend-in; duhet implementim Supabase/Firebase + faqe web për të ftuarit pas skanimit të QR-së (`JOIN_BASE_URL` në `src/lib/config.ts`).
 
-## Privatësia / Privacy
+## Zhvillim
 
-Në prototip të gjitha të dhënat ruhen **vetëm në telefon**. Nuk ka llogari, server apo analitikë.
-In the prototype all data stays **on the phone only**. No accounts, servers, or analytics.
-
-## Teknologjia / Tech
-
-Expo (React Native) + TypeScript, një kod për Android dhe iPhone.
-
-## Statusi / Status
-
-Prototip në ndërtim (Faza 5). Nuk jep këshilla mjekësore apo ushqimore profesionale.
-Prototype in progress. Not medical or professional nutrition advice.
-
-## Si ta provosh / How to try it
-
-Shih [docs/UDHEZIME.md](docs/UDHEZIME.md) (shqip): instalimi, hapja në telefon me Expo Go dhe lista e kontrollit.
-
-Developers: `npm install`, `npx expo start`, `npm test`, `npm run typecheck`.
+```
+npm install
+npx expo start      # Expo Go / web
+npm test
+npm run typecheck
+```

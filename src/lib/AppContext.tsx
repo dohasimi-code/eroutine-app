@@ -1,416 +1,81 @@
-import { getLocales } from 'expo-localization';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import type { IngredientId } from '../data/ingredients';
-import { pickInitialLanguage, translate, type Language, type TranslationKey, type TranslationParams } from '../i18n';
-import {
-  chooseOption,
-  fillOptions,
-  fitsProfile,
-  generateWeek,
-  getRecipe,
-  loadWeek,
-  otherOptions,
-  relinkLeftovers,
-  saveWeek,
-  seededRandom,
-  setDone,
-  type DinnerStyle,
-  type Meal,
-  type WeekMenu,
-} from './menu';
-import {
-  NEW_PROGRESS,
-  completeDay,
-  loadJournal,
-  loadProgress,
-  newEntry,
-  saveJournal,
-  saveProgress,
-  type JournalEntry,
-  type PlanProgress,
-} from './moment';
-import { deviceStore } from './deviceStore';
-import { loadPantry, savePantry } from './pantry';
-import { loadProfile, saveProfile as persistProfile, type FamilyProfile } from './profile';
-import { cancelAllReminders, requestReminderPermission, syncReminders } from './reminders';
-import { hasReminder, loadRoutines, saveRoutines, upsertRoutine, validateRoutine, type Routine } from './routines';
-import {
-  EMPTY_LIST_STATE,
-  loadListState,
-  loadPrices,
-  saveListState,
-  savePrices,
-  todayIso,
-  toggleIn,
-  type ListState,
-  type Price,
-  type PriceBook,
-} from './shopping';
-import { deleteAllData, loadSettings, saveSettings, type KeyValueStore } from './storage';
+import { makeId, makeJoinCode } from './logic';
+import { localRepository, type Repository } from './repository';
+import type { Photo, RevealMode, WeddingEvent } from './types';
 
-type AppContextValue = {
+type NewEvent = { title: string; date: string; shotsPerGuest: number; reveal: RevealMode };
+
+type Ctx = {
   ready: boolean;
-  language: Language;
-  setLanguage(language: Language): Promise<void>;
-  t(key: TranslationKey, params?: TranslationParams): string;
-  // null until the first-run questions are finished (or skipped).
-  profile: FamilyProfile | null;
-  saveProfile(profile: FamilyProfile): Promise<void>;
-  week: WeekMenu | null;
-  newWeek(dinnerStyle?: DinnerStyle): Promise<void>;
-  // Picks one of the three dishes offered for a meal.
-  chooseMeal(dayIndex: number, meal: Meal, recipeId: string): Promise<void>;
-  markDone(dayIndex: number, meal: Meal, done: boolean): Promise<void>;
-  // Replaces the three offered dishes with three others.
-  showOtherOptions(dayIndex: number, meal: Meal): Promise<void>;
-  prices: PriceBook;
-  setPrice(id: IngredientId, price: Price | null): Promise<void>;
-  listState: ListState;
-  toggleAtHome(key: string): Promise<void>;
-  toggleBought(key: string): Promise<void>;
-  progress: PlanProgress;
-  completeToday(): Promise<void>;
-  restartPlan(): Promise<void>;
-  journal: JournalEntry[];
-  addJournalEntry(text: string): Promise<boolean>;
-  deleteJournalEntry(id: string): Promise<void>;
-  routines: Routine[];
-  // Ingredients she has at home; new menus use them first.
-  pantry: IngredientId[];
-  setPantry(pantry: IngredientId[]): Promise<void>;
-  // "blocked": saved, but the phone does not allow notifications, so no reminder will show.
-  saveRoutine(routine: Routine): Promise<'saved' | 'blocked' | 'invalid'>;
-  toggleRoutine(id: string): Promise<'saved' | 'blocked' | 'invalid'>;
-  deleteRoutine(id: string): Promise<void>;
-  resetAllData(): Promise<void>;
+  events: WeddingEvent[];
+  photos: Photo[];
+  createEvent: (e: NewEvent) => Promise<WeddingEvent>;
+  deleteEvent: (id: string) => Promise<void>;
+  addPhoto: (eventId: string, tempUri: string, guest: string) => Promise<Photo>;
 };
 
-const freshRandom = () => seededRandom(Date.now());
+const AppContext = createContext<Ctx | null>(null);
 
-// After the profile changes, a locked meal survives only if it still fits the family.
-function dropLocksThatNoLongerFit(week: WeekMenu, profile: FamilyProfile): WeekMenu {
-  return {
-    ...week,
-    days: week.days.map((day) => {
-      const next = { ...day };
-      for (const meal of ['breakfast', 'lunch', 'dinner'] as const) {
-        const slot = day[meal];
-        if (slot.kind === 'recipe' && slot.locked) {
-          const recipe = getRecipe(slot.recipeId);
-          if (!recipe || !fitsProfile(recipe, profile)) next[meal] = { ...slot, locked: false };
-        }
-      }
-      return next;
-    }),
-  };
-}
-
-const AppContext = createContext<AppContextValue | null>(null);
-
-function deviceLanguage(): Language {
-  return pickInitialLanguage(getLocales().map((locale) => locale.languageCode));
-}
-
-export function AppProvider({ children, store = deviceStore }: { children: ReactNode; store?: KeyValueStore }) {
+export function AppProvider({ children, repo = localRepository }: { children: ReactNode; repo?: Repository }) {
   const [ready, setReady] = useState(false);
-  const [language, setLanguageState] = useState<Language>('sq');
-  const [profile, setProfile] = useState<FamilyProfile | null>(null);
-  const [week, setWeek] = useState<WeekMenu | null>(null);
-  const [prices, setPrices] = useState<PriceBook>({});
-  const [listState, setListState] = useState<ListState>(EMPTY_LIST_STATE);
-  const [progress, setProgress] = useState<PlanProgress>(NEW_PROGRESS);
-  const [journal, setJournal] = useState<JournalEntry[]>([]);
-  const [routines, setRoutines] = useState<Routine[]>([]);
-  const [pantry, setPantryState] = useState<IngredientId[]>([]);
-
-  const storeWeek = useCallback(
-    async (next: WeekMenu) => {
-      setWeek(next);
-      await saveWeek(store, next);
-    },
-    [store],
-  );
-
-  const storeListState = useCallback(
-    async (next: ListState) => {
-      setListState(next);
-      await saveListState(store, next);
-    },
-    [store],
-  );
-
-  // A new week means a new shopping trip: ticks start over, prices stay.
-  const storeNewWeek = useCallback(
-    async (next: WeekMenu) => {
-      await storeWeek(next);
-      await storeListState(EMPTY_LIST_STATE);
-    },
-    [storeWeek, storeListState],
-  );
+  const [events, setEvents] = useState<WeddingEvent[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
 
   useEffect(() => {
-    Promise.all([
-      loadSettings(store),
-      loadProfile(store),
-      loadWeek(store),
-      loadPrices(store),
-      loadListState(store),
-      loadProgress(store),
-      loadJournal(store),
-      loadRoutines(store),
-      loadPantry(store),
-    ]).then(
-      async ([settings, savedProfile, savedWeek, savedPrices, savedListState, savedProgress, savedJournal, savedRoutines, savedPantry]) => {
-        setLanguageState(settings?.language ?? deviceLanguage());
-        setProfile(savedProfile);
-        setPrices(savedPrices);
-        setListState(savedListState);
-        setProgress(savedProgress);
-        setJournal(savedJournal);
-        setRoutines(savedRoutines);
-        setPantryState(savedPantry);
-        if (savedProfile && !savedWeek) await storeNewWeek(generateWeek(savedProfile, 'mixed', freshRandom(), undefined, new Set(savedPantry)));
-        else setWeek(savedWeek);
-        setReady(true);
-      },
-    );
-  }, [store, storeNewWeek]);
+    repo.load().then((d) => {
+      setEvents(d.events);
+      setPhotos(d.photos);
+      setReady(true);
+    });
+  }, [repo]);
 
-  const setLanguage = useCallback(
-    async (next: Language) => {
-      setLanguageState(next);
-      await saveSettings(store, { language: next });
-      // Reminder texts follow the app language.
-      await syncReminders(routines, next, translate(next, 'routine.channel'));
+  const createEvent = useCallback(
+    async (e: NewEvent) => {
+      const ev: WeddingEvent = { ...e, id: makeId(), joinCode: makeJoinCode(), createdAt: Date.now() };
+      const next = [ev, ...events];
+      setEvents(next);
+      await repo.saveEvents(next);
+      return ev;
     },
-    [store, routines],
+    [events, repo],
   );
 
-  const saveProfile = useCallback(
-    async (next: FamilyProfile) => {
-      await persistProfile(store, next);
-      setProfile(next);
-      // The menu follows the new profile straight away; locked meals stay if they still fit.
-      const previous = week ? dropLocksThatNoLongerFit(week, next) : undefined;
-      await storeNewWeek(generateWeek(next, week?.dinnerStyle ?? 'mixed', freshRandom(), previous, new Set(pantry)));
-    },
-    [store, week, pantry, storeNewWeek],
-  );
-
-  const newWeek = useCallback(
-    async (dinnerStyle?: DinnerStyle) => {
-      if (!profile) return;
-      await storeNewWeek(generateWeek(profile, dinnerStyle ?? week?.dinnerStyle ?? 'mixed', freshRandom(), week ?? undefined, new Set(pantry)));
-    },
-    [profile, week, pantry, storeNewWeek],
-  );
-
-  // Changing a lunch can change what tomorrow's leftovers dinner reheats.
-  const relinked = useCallback(
-    (next: WeekMenu) => {
-      const random = freshRandom();
-      return fillOptions(relinkLeftovers(next, profile!, random), profile!, random, new Set(pantry));
-    },
-    [profile, pantry],
-  );
-
-  const chooseMeal = useCallback(
-    async (dayIndex: number, meal: Meal, recipeId: string) => {
-      if (week && profile) await storeWeek(relinked(chooseOption(week, dayIndex, meal, recipeId)));
-    },
-    [week, profile, relinked, storeWeek],
-  );
-
-  const showOtherOptions = useCallback(
-    async (dayIndex: number, meal: Meal) => {
-      if (week && profile) await storeWeek(relinked(otherOptions(week, dayIndex, meal, profile, freshRandom(), new Set(pantry))));
-    },
-    [week, profile, pantry, relinked, storeWeek],
-  );
-
-  const markDone = useCallback(
-    async (dayIndex: number, meal: Meal, done: boolean) => {
-      if (week) await storeWeek(setDone(week, dayIndex, meal, done));
-    },
-    [week, storeWeek],
-  );
-
-  const setPrice = useCallback(
-    async (id: IngredientId, price: Price | null) => {
-      const next = { ...prices };
-      if (price) next[id] = price;
-      else delete next[id];
-      setPrices(next);
-      await savePrices(store, next);
-    },
-    [store, prices],
-  );
-
-  const toggleAtHome = useCallback(
-    (key: string) => storeListState({ ...listState, atHome: toggleIn(listState.atHome, key) }),
-    [listState, storeListState],
-  );
-
-  const toggleBought = useCallback(
-    (key: string) => storeListState({ ...listState, bought: toggleIn(listState.bought, key) }),
-    [listState, storeListState],
-  );
-
-  const storeProgress = useCallback(
-    async (next: PlanProgress) => {
-      setProgress(next);
-      await saveProgress(store, next);
-    },
-    [store],
-  );
-
-  const completeToday = useCallback(() => storeProgress(completeDay(progress, todayIso())), [progress, storeProgress]);
-
-  const restartPlan = useCallback(() => storeProgress(NEW_PROGRESS), [storeProgress]);
-
-  const addJournalEntry = useCallback(
-    async (text: string) => {
-      const entry = newEntry(text, new Date());
-      if (!entry) return false;
-      const next = [entry, ...journal];
-      setJournal(next);
-      await saveJournal(store, next);
-      return true;
-    },
-    [store, journal],
-  );
-
-  const deleteJournalEntry = useCallback(
+  const deleteEvent = useCallback(
     async (id: string) => {
-      const next = journal.filter((entry) => entry.id !== id);
-      setJournal(next);
-      await saveJournal(store, next);
+      const gone = photos.filter((p) => p.eventId === id);
+      const nextEvents = events.filter((e) => e.id !== id);
+      const nextPhotos = photos.filter((p) => p.eventId !== id);
+      setEvents(nextEvents);
+      setPhotos(nextPhotos);
+      await Promise.all(gone.map((p) => repo.removePhotoFile(p.uri)));
+      await Promise.all([repo.saveEvents(nextEvents), repo.savePhotos(nextPhotos)]);
     },
-    [store, journal],
+    [events, photos, repo],
   );
 
-  const storeRoutines = useCallback(
-    async (next: Routine[]) => {
-      setRoutines(next);
-      await saveRoutines(store, next);
-      await syncReminders(next, language, translate(language, 'routine.channel'));
+  const addPhoto = useCallback(
+    async (eventId: string, tempUri: string, guest: string) => {
+      const id = makeId();
+      const uri = await repo.persistPhoto(tempUri, id);
+      const photo: Photo = { id, eventId, uri, takenAt: Date.now(), guest };
+      const next = [photo, ...photos];
+      setPhotos(next);
+      await repo.savePhotos(next);
+      return photo;
     },
-    [store, language],
+    [photos, repo],
   );
 
-  const saveRoutine = useCallback(
-    async (routine: Routine) => {
-      const valid = validateRoutine(routine);
-      if (!valid) return 'invalid' as const;
-      const allowed = hasReminder(valid) ? await requestReminderPermission(translate(language, 'routine.channel')) : true;
-      await storeRoutines(upsertRoutine(routines, valid));
-      return allowed ? ('saved' as const) : ('blocked' as const);
-    },
-    [routines, language, storeRoutines],
+  const value = useMemo(
+    () => ({ ready, events, photos, createEvent, deleteEvent, addPhoto }),
+    [ready, events, photos, createEvent, deleteEvent, addPhoto],
   );
-
-  const toggleRoutine = useCallback(
-    async (id: string) => {
-      const routine = routines.find((r) => r.id === id);
-      return routine ? saveRoutine({ ...routine, active: !routine.active }) : ('invalid' as const);
-    },
-    [routines, saveRoutine],
-  );
-
-  const deleteRoutine = useCallback((id: string) => storeRoutines(routines.filter((r) => r.id !== id)), [routines, storeRoutines]);
-
-  const setPantry = useCallback(
-    async (next: IngredientId[]) => {
-      setPantryState(next);
-      await savePantry(store, next);
-    },
-    [store],
-  );
-
-  const resetAllData = useCallback(async () => {
-    await cancelAllReminders();
-    await deleteAllData(store);
-    setLanguageState(deviceLanguage());
-    setProfile(null);
-    setWeek(null);
-    setPrices({});
-    setListState(EMPTY_LIST_STATE);
-    setProgress(NEW_PROGRESS);
-    setJournal([]);
-    setRoutines([]);
-    setPantryState([]);
-  }, [store]);
-
-  const value = useMemo<AppContextValue>(
-    () => ({
-      ready,
-      language,
-      setLanguage,
-      t: (key, params) => translate(language, key, params),
-      profile,
-      saveProfile,
-      week,
-      newWeek,
-      chooseMeal,
-      markDone,
-      showOtherOptions,
-      prices,
-      setPrice,
-      listState,
-      toggleAtHome,
-      toggleBought,
-      progress,
-      completeToday,
-      restartPlan,
-      journal,
-      addJournalEntry,
-      deleteJournalEntry,
-      routines,
-      saveRoutine,
-      toggleRoutine,
-      deleteRoutine,
-      pantry,
-      setPantry,
-      resetAllData,
-    }),
-    [
-      ready,
-      language,
-      setLanguage,
-      profile,
-      saveProfile,
-      week,
-      newWeek,
-      chooseMeal,
-      markDone,
-      showOtherOptions,
-      prices,
-      setPrice,
-      listState,
-      toggleAtHome,
-      toggleBought,
-      progress,
-      completeToday,
-      restartPlan,
-      journal,
-      addJournalEntry,
-      deleteJournalEntry,
-      routines,
-      saveRoutine,
-      toggleRoutine,
-      deleteRoutine,
-      pantry,
-      setPantry,
-      resetAllData,
-    ],
-  );
-
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-export function useApp(): AppContextValue {
-  const value = useContext(AppContext);
-  if (!value) throw new Error('useApp must be used inside AppProvider');
-  return value;
+export function useApp(): Ctx {
+  const c = useContext(AppContext);
+  if (!c) throw new Error('useApp must be used inside AppProvider');
+  return c;
 }

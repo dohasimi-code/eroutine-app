@@ -1,37 +1,29 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { AppProvider, useApp } from '../lib/AppContext';
+import { AppProvider } from '../lib/AppContext';
+import { s } from '../lib/strings';
 import { colors } from '../ui/theme';
-
-function RootStack() {
-  const { t } = useApp();
-  return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.text,
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="settings" options={{ title: t('settings.title') }} />
-      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-      <Stack.Screen name="recipe/[id]" options={{ title: '', headerBackTitle: t('settings.back') }} />
-      <Stack.Screen name="day/[index]" options={{ title: '', headerBackTitle: t('tabs.menu') }} />
-      <Stack.Screen name="reading/[day]" options={{ title: '', headerBackTitle: t('tabs.moment') }} />
-      <Stack.Screen name="journal" options={{ title: '', headerBackTitle: t('tabs.moment') }} />
-      <Stack.Screen name="routine/[id]" options={{ title: '', headerBackTitle: t('tabs.moment') }} />
-      <Stack.Screen name="pantry" options={{ title: '', headerBackTitle: t('settings.back') }} />
-    </Stack>
-  );
-}
 
 export default function RootLayout() {
   return (
     <AppProvider>
       <StatusBar style="dark" />
-      <RootStack />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.bg },
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.bg },
+          headerBackTitle: s.back,
+        }}
+      >
+        <Stack.Screen name="index" options={{ title: s.appName }} />
+        <Stack.Screen name="new-event" options={{ title: s.newEvent, presentation: 'modal' }} />
+        <Stack.Screen name="event/[id]" options={{ title: '' }} />
+        <Stack.Screen name="camera/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="photo/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+      </Stack>
     </AppProvider>
   );
 }
