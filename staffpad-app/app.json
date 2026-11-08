@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Portativ",
+    "slug": "portativ",
+    "scheme": "portativ",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "ios": { "supportsTablet": true },
+    "android": { "predictiveBackGestureEnabled": false },
+    "web": {},
+    "plugins": ["expo-router"]
+  }
+}
